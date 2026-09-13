@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { ShoppingBag, Sprout } from 'lucide-react';
+import { ShoppingBag } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { about, home } from '@/routes';
@@ -26,9 +26,11 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
             <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80">
                 <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
                     <Link href={home()} className="flex items-center gap-2">
-                        <div className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                            <Sprout className="size-5" />
-                        </div>
+                        <img
+                            src="/logo.jpg"
+                            alt={title}
+                            className="size-9 rounded-full object-cover"
+                        />
                         <div className="leading-tight">
                             <p className="text-sm font-semibold tracking-tight text-foreground">
                                 {title}
