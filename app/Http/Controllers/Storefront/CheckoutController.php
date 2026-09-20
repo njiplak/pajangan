@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Storefront;
 
+use App\Contract\Notification\OrderNotifierContract;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CheckoutRequest;
 use App\Models\BundleItem;
@@ -27,6 +28,7 @@ class CheckoutController extends Controller
         private readonly CartService $cart,
         private readonly PaymentService $payment,
         private readonly ShippingProviderManager $shipping,
+        private readonly OrderNotifierContract $notifier,
     ) {}
 
     public function index()
@@ -229,6 +231,7 @@ class CheckoutController extends Controller
         $confirmationUrl = URL::signedRoute('order.show', ['order' => $order->order_number]);
 
         $gatewayKey = $this->payment->activeGatewayKey();
+        $gatewayRedirect = null;
 
         if ($gatewayKey) {
             try {
@@ -237,9 +240,7 @@ class CheckoutController extends Controller
                     'callback_url' => route('payment.callback', ['gateway' => $gatewayKey]),
                 ]);
 
-                if ($result['redirect_url']) {
-                    return Inertia::location($result['redirect_url']);
-                }
+                $gatewayRedirect = $result['redirect_url'];
             } catch (Throwable $e) {
                 // The order (and its stock decrement) already exists and
                 // must not be lost just because the gateway call failed.
@@ -247,6 +248,17 @@ class CheckoutController extends Controller
                 // pending and can be retried/handled manually.
                 Log::error("Payment initiation failed for order [{$order->order_number}] via gateway [{$gatewayKey}]: {$e->getMessage()}");
             }
+        }
+
+        // Sent after the gateway call because initiate() is what settles
+        // the admin fee and the final total — mailing before it would
+        // quote the customer a number we are not charging. Sent on both
+        // paths: a customer redirected to a payment page still needs the
+        // link back to their order.
+        $this->notifier->orderPlaced($order->refresh());
+
+        if ($gatewayRedirect) {
+            return Inertia::location($gatewayRedirect);
         }
 
         return redirect()->to($confirmationUrl);

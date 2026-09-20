@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Payment;
 
+use App\Contract\Notification\OrderNotifierContract;
 use App\Contract\Payment\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
@@ -13,7 +14,10 @@ use InvalidArgumentException;
 
 class PaymentCallbackController extends Controller
 {
-    public function __construct(private readonly PaymentGatewayManager $gateways) {}
+    public function __construct(
+        private readonly PaymentGatewayManager $gateways,
+        private readonly OrderNotifierContract $notifier,
+    ) {}
 
     public function handle(Request $request, string $gateway)
     {
@@ -36,7 +40,10 @@ class PaymentCallbackController extends Controller
 
         $notification = $service->parseNotification($request->all());
 
-        DB::transaction(function () use ($gateway, $notification) {
+        // Returns the order only when this delivery is the one that moved
+        // it to paid, so a duplicate or out-of-order webhook cannot mail
+        // the customer a second receipt.
+        $newlyPaid = DB::transaction(function () use ($gateway, $notification) {
             $order = Order::query()
                 ->where('payment_gateway', $gateway)
                 ->where('payment_reference', $notification['reference'])
@@ -46,17 +53,17 @@ class PaymentCallbackController extends Controller
             if (! $order) {
                 Log::warning("Payment callback for unknown reference [{$notification['reference']}] on gateway [{$gateway}].");
 
-                return;
+                return null;
             }
 
             if ($order->payment_status === PaymentStatus::PAID) {
                 // Terminal state: never let a stale/out-of-order webhook downgrade a paid order.
-                return;
+                return null;
             }
 
             if ($order->payment_status === $notification['status']) {
                 // Duplicate delivery.
-                return;
+                return null;
             }
 
             $order->payment_status = $notification['status'];
@@ -68,7 +75,15 @@ class PaymentCallbackController extends Controller
             }
 
             $order->save();
+
+            return $notification['status'] === PaymentStatus::PAID ? $order : null;
         });
+
+        // Outside the transaction: a receipt must only go out for a write
+        // that actually committed.
+        if ($newlyPaid) {
+            $this->notifier->paymentReceived($newlyPaid);
+        }
 
         return response()->json(['message' => 'ok']);
     }
