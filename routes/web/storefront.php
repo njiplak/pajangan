@@ -22,6 +22,9 @@ Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.s
 Route::get('/checkout/shipping/areas', [ShippingController::class, 'searchAreas'])->name('checkout.shipping-areas')->middleware('checkout-mode');
 Route::post('/checkout/shipping/rates', [ShippingController::class, 'rates'])->name('checkout.shipping-rates')->middleware('checkout-mode');
 
+Route::post('/pengiriman/tujuan', [ShippingController::class, 'setDestination'])->name('shipping.destination')->middleware('checkout-mode');
+Route::get('/pengiriman/estimasi', [ShippingController::class, 'estimate'])->name('shipping.estimate')->middleware('checkout-mode');
+
 Route::get('/pesanan/{order:order_number}', [OrderLookupController::class, 'show'])
     ->name('order.show')
     ->middleware('signed');

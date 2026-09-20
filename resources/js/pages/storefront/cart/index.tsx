@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ShippingEstimate } from '@/components/storefront/shipping-estimate';
 import StorefrontLayout from '@/layouts/storefront-layout';
 import { formatRupiah } from '@/lib/utils';
 import { destroy as cartDestroy, update as cartUpdate } from '@/routes/cart';
@@ -114,12 +115,16 @@ export default function CartIndex({ cart }: Props) {
                 ))}
             </div>
 
-            <div className="mt-6 flex flex-col items-end gap-2">
-                <p className="text-sm text-muted-foreground">
-                    Ongkos kirim akan dikonfirmasi oleh admin setelah pesanan dibuat.
-                </p>
+            <div className="mt-6">
+                <ShippingEstimate />
+            </div>
+
+            <div className="mt-4 flex flex-col items-end gap-2">
                 <p className="text-lg font-semibold text-foreground">
-                    Total: {formatRupiah(cart.total)}
+                    Subtotal: {formatRupiah(cart.total)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                    Ongkir dihitung pasti di halaman checkout.
                 </p>
                 <Button asChild size="lg">
                     <Link href={checkoutIndex()}>Lanjut ke Checkout</Link>

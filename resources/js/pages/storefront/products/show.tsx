@@ -2,6 +2,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { MessageCircle, Minus, Package, Plus, ShoppingBag } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { ShippingEstimate } from '@/components/storefront/shipping-estimate';
 import StorefrontLayout from '@/layouts/storefront-layout';
 import { FormResponse } from '@/lib/constant';
 import { formatRupiah, whatsappLink } from '@/lib/utils';
@@ -154,6 +155,13 @@ export default function ProductShow({ product }: Props) {
                           ? `Tersedia ${product.stock} paket`
                           : `Stok tersedia: ${product.stock}`}
                 </p>
+
+                {!isDisplayMode && !outOfStock && (
+                    <ShippingEstimate
+                        productId={product.id}
+                        quantity={quantity}
+                    />
+                )}
 
                 {isDisplayMode
                     ? settings.storefront_whatsapp_number && (

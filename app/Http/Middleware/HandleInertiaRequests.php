@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Contract\Setting\SettingContract;
 use App\Service\Cart\CartService;
+use App\Service\Shipping\ShippingDestination;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -12,6 +13,7 @@ class HandleInertiaRequests extends Middleware
     public function __construct(
         private readonly CartService $cart,
         private readonly SettingContract $settings,
+        private readonly ShippingDestination $destination,
     ) {}
 
     /**
@@ -52,6 +54,8 @@ class HandleInertiaRequests extends Middleware
                     : [],
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            // Null until the visitor tells us where to ship; nothing is guessed.
+            'shippingDestination' => $this->destination->get(),
             'cart' => [
                 'count' => $this->cart->count(),
             ],

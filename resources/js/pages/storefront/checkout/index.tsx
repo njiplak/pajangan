@@ -1,5 +1,5 @@
-import { Head, useForm } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { Head, useForm, usePage } from '@inertiajs/react';
+import { useEffect, useRef, useState } from 'react';
 import AlertError from '@/components/alert-error';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import StorefrontLayout from '@/layouts/storefront-layout';
 import { FormResponse } from '@/lib/constant';
 import { formatRupiah, getCsrfToken } from '@/lib/utils';
 import { store as checkoutStore, shippingAreas, shippingRates } from '@/routes/checkout';
+import type { SharedData } from '@/types';
 import type { CartSummary } from '@/types/cart';
 import type { ShippingArea, ShippingRateOption } from '@/types/order';
 
@@ -18,6 +19,7 @@ type Props = {
 };
 
 export default function CheckoutIndex({ cart }: Props) {
+    const { shippingDestination } = usePage<SharedData>().props;
     const { data, setData, post, processing, errors } = useForm({
         customer_name: '',
         customer_email: '',
@@ -99,6 +101,25 @@ export default function CheckoutIndex({ cart }: Props) {
             setLoadingRates(false);
         }
     };
+
+    // The visitor already named their area on the product or cart page;
+    // reuse it here rather than making them search for it a second time.
+    const prefilled = useRef(false);
+
+    useEffect(() => {
+        if (prefilled.current || !shippingDestination) {
+            return;
+        }
+
+        prefilled.current = true;
+        onSelectArea({
+            id: shippingDestination.id,
+            name: shippingDestination.name,
+            postal_code: null,
+        });
+        // onSelectArea is stable for this one-shot prefill.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [shippingDestination]);
 
     const onSelectRate = (rate: ShippingRateOption) => {
         setSelectedRate(rate);

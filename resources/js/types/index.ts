@@ -3,6 +3,7 @@ export type * from './navigation';
 export type * from './ui';
 
 import type { Auth } from './auth';
+import type { ShippingDestination } from './shipping';
 
 export type StorefrontSettings = {
     storefront_mode: 'checkout' | 'display';
@@ -24,6 +25,8 @@ export type SharedData = {
     cart: {
         count: number;
     };
+    /** Null until the visitor picks one; nothing is inferred. */
+    shippingDestination: ShippingDestination | null;
     settings: StorefrontSettings;
     [key: string]: unknown;
 };
