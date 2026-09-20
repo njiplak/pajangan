@@ -50,6 +50,9 @@ class BackofficeController extends Controller
 
         $lowStockProducts = Product::query()
             ->where('is_active', true)
+            // Bundles hold no stock of their own; their components are
+            // already listed here in their own right.
+            ->where('is_bundle', false)
             ->where('stock', '<=', $lowStockThreshold)
             ->orderBy('stock')
             ->get(['id', 'name', 'stock']);

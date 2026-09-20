@@ -1,11 +1,12 @@
-import { Head, router, usePage } from '@inertiajs/react';
-import { MessageCircle, Minus, Plus, ShoppingBag } from 'lucide-react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { MessageCircle, Minus, Package, Plus, ShoppingBag } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import StorefrontLayout from '@/layouts/storefront-layout';
 import { FormResponse } from '@/lib/constant';
 import { formatRupiah, whatsappLink } from '@/lib/utils';
 import { store as cartStore } from '@/routes/cart';
+import { show as productShow } from '@/routes/products';
 import type { SharedData } from '@/types';
 import type { ProductDetail } from '@/types/product';
 
@@ -18,7 +19,11 @@ export default function ProductShow({ product }: Props) {
     const { settings } = usePage<SharedData>().props;
     const isDisplayMode = settings.storefront_mode === 'display';
     const outOfStock = product.stock <= 0;
-    const hasDiscount = !!product.discount_percent && product.discount_percent > 0;
+    const hasDiscount =
+        !!product.discount_percent && product.discount_percent > 0;
+    const savings = product.is_bundle
+        ? product.components_total - product.effective_price
+        : 0;
     const metaDescription = product.description
         ? product.description.length > 160
             ? `${product.description.slice(0, 157)}...`
@@ -91,68 +96,121 @@ export default function ProductShow({ product }: Props) {
                     )}
                 </div>
 
+                {savings > 0 && (
+                    <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                        Hemat {formatRupiah(savings)} dibanding beli satuan
+                        <span className="ml-1 font-normal text-muted-foreground line-through">
+                            {formatRupiah(product.components_total)}
+                        </span>
+                    </p>
+                )}
+
                 {product.description && (
                     <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">
                         {product.description}
                     </p>
                 )}
 
+                {product.is_bundle && product.bundle_items.length > 0 && (
+                    <div className="rounded-lg border border-border p-4">
+                        <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                            <Package className="size-4" />
+                            Isi paket ini
+                        </p>
+                        <ul className="mt-3 flex flex-col gap-2">
+                            {product.bundle_items.map((item) => (
+                                <li
+                                    key={item.product_id}
+                                    className="flex items-center gap-3 text-sm"
+                                >
+                                    {item.image ? (
+                                        <img
+                                            src={item.image}
+                                            alt=""
+                                            className="size-10 rounded-md object-cover"
+                                        />
+                                    ) : (
+                                        <div className="size-10 rounded-md bg-muted" />
+                                    )}
+                                    <Link
+                                        href={productShow(item.slug)}
+                                        className="flex-1 text-foreground hover:underline"
+                                    >
+                                        {item.name}
+                                    </Link>
+                                    <span className="text-muted-foreground">
+                                        &times;{item.quantity}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
                 <p className="text-sm text-muted-foreground">
-                    {outOfStock ? 'Stok habis' : `Stok tersedia: ${product.stock}`}
+                    {outOfStock
+                        ? 'Stok habis'
+                        : product.is_bundle
+                          ? `Tersedia ${product.stock} paket`
+                          : `Stok tersedia: ${product.stock}`}
                 </p>
 
-                {isDisplayMode ? (
-                    settings.storefront_whatsapp_number && (
-                        <Button asChild size="lg" className="gap-2">
-                            <a
-                                href={whatsappLink(
-                                    settings.storefront_whatsapp_number,
-                                    `Halo, saya ingin memesan produk "${product.name}".`,
-                                )}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                <MessageCircle className="size-4" />
-                                Pesan via WhatsApp
-                            </a>
-                        </Button>
-                    )
-                ) : (
-                    !outOfStock && (
-                        <div className="flex items-center gap-3">
-                            <div className="flex items-center rounded-md border border-input">
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={decrement}
-                                    disabled={quantity <= 1}
-                                >
-                                    <Minus className="size-4" />
-                                </Button>
-                                <span className="w-10 text-center text-sm font-medium">
-                                    {quantity}
-                                </span>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={increment}
-                                    disabled={quantity >= product.stock}
-                                >
-                                    <Plus className="size-4" />
-                                </Button>
-                            </div>
-                            <Button onClick={addToCart} size="lg" className="gap-2">
-                                <ShoppingBag className="size-4" />
-                                Tambah ke Keranjang
-                            </Button>
-                        </div>
-                    )
-                )}
+                {isDisplayMode
+                    ? settings.storefront_whatsapp_number && (
+                          <Button asChild size="lg" className="gap-2">
+                              <a
+                                  href={whatsappLink(
+                                      settings.storefront_whatsapp_number,
+                                      `Halo, saya ingin memesan produk "${product.name}".`,
+                                  )}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                              >
+                                  <MessageCircle className="size-4" />
+                                  Pesan via WhatsApp
+                              </a>
+                          </Button>
+                      )
+                    : !outOfStock && (
+                          <div className="flex items-center gap-3">
+                              <div className="flex items-center rounded-md border border-input">
+                                  <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={decrement}
+                                      disabled={quantity <= 1}
+                                  >
+                                      <Minus className="size-4" />
+                                  </Button>
+                                  <span className="w-10 text-center text-sm font-medium">
+                                      {quantity}
+                                  </span>
+                                  <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={increment}
+                                      disabled={quantity >= product.stock}
+                                  >
+                                      <Plus className="size-4" />
+                                  </Button>
+                              </div>
+                              <Button
+                                  onClick={addToCart}
+                                  size="lg"
+                                  className="gap-2"
+                              >
+                                  <ShoppingBag className="size-4" />
+                                  Tambah ke Keranjang
+                              </Button>
+                          </div>
+                      )}
             </div>
         </div>
     );
 }
 
-ProductShow.layout = (page: React.ReactNode) => <StorefrontLayout>{page}</StorefrontLayout>;
+ProductShow.layout = (page: React.ReactNode) => (
+    <StorefrontLayout>{page}</StorefrontLayout>
+);

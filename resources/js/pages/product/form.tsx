@@ -1,22 +1,35 @@
 import { router, useForm } from '@inertiajs/react';
-import { LoaderCircle } from 'lucide-react';
+import { LoaderCircle, Plus, Trash2 } from 'lucide-react';
 import { FileUpload } from '@/components/file-upload';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { FormResponse } from '@/lib/constant';
+import { formatRupiah } from '@/lib/utils';
 import { index, store, update } from '@/routes/backoffice/product';
-import type { Product } from '@/types/product';
+import type {
+    BundleItemInput,
+    ComponentOption,
+    Product,
+} from '@/types/product';
 
 type Props = {
     product?: Product;
+    componentOptions: ComponentOption[];
 };
 
-export default function ProductForm({ product }: Props) {
+export default function ProductForm({ product, componentOptions }: Props) {
     const { data, setData, post, transform, errors, processing } = useForm<{
         name: string;
         description: string;
@@ -27,6 +40,8 @@ export default function ProductForm({ product }: Props) {
         producer_name: string;
         producer_region: string;
         is_active: boolean;
+        is_bundle: boolean;
+        bundle_items: BundleItemInput[];
         images: File[];
         removed_images: number[];
     }>({
@@ -39,16 +54,85 @@ export default function ProductForm({ product }: Props) {
         producer_name: product?.producer_name ?? '',
         producer_region: product?.producer_region ?? '',
         is_active: product?.is_active ?? true,
+        is_bundle: product?.is_bundle ?? false,
+        bundle_items: product?.bundle_items ?? [],
         images: [],
         removed_images: [],
     });
+
+    const optionsById = new Map(
+        componentOptions.map((option) => [option.id, option]),
+    );
+    const chosenIds = new Set(data.bundle_items.map((item) => item.product_id));
+
+    const addBundleItem = () => {
+        const next = componentOptions.find(
+            (option) => !chosenIds.has(option.id),
+        );
+
+        if (next) {
+            setData('bundle_items', [
+                ...data.bundle_items,
+                { product_id: next.id, quantity: 1 },
+            ]);
+        }
+    };
+
+    const updateBundleItem = (
+        index: number,
+        patch: Partial<BundleItemInput>,
+    ) => {
+        setData(
+            'bundle_items',
+            data.bundle_items.map((item, i) =>
+                i === index ? { ...item, ...patch } : item,
+            ),
+        );
+    };
+
+    const removeBundleItem = (index: number) => {
+        setData(
+            'bundle_items',
+            data.bundle_items.filter((_, i) => i !== index),
+        );
+    };
+
+    // Mirrors Product::availableStock() and shippingWeightGram() so staff see
+    // what the bundle will actually offer before they save it.
+    const derived = data.bundle_items.reduce(
+        (acc, item) => {
+            const option = optionsById.get(item.product_id);
+
+            if (!option || item.quantity < 1) {
+                return { stock: 0, weight: acc.weight, worth: acc.worth };
+            }
+
+            return {
+                stock: Math.min(
+                    acc.stock,
+                    Math.floor(option.stock / item.quantity),
+                ),
+                weight: acc.weight + option.weight_gram * item.quantity,
+                worth: acc.worth + option.effective_price * item.quantity,
+            };
+        },
+        { stock: Infinity, weight: 0, worth: 0 },
+    );
+
+    const derivedStock =
+        data.bundle_items.length === 0 || derived.stock === Infinity
+            ? 0
+            : derived.stock;
 
     const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         if (product) {
             transform((current) => ({ ...current, _method: 'put' }));
-            post(update(product.id).url, { ...FormResponse, forceFormData: true });
+            post(update(product.id).url, {
+                ...FormResponse,
+                forceFormData: true,
+            });
         } else {
             post(store().url, { ...FormResponse, forceFormData: true });
         }
@@ -79,6 +163,23 @@ export default function ProductForm({ product }: Props) {
                     <InputError message={errors.description} />
                 </div>
 
+                <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3">
+                    <Checkbox
+                        checked={data.is_bundle}
+                        onCheckedChange={(checked) =>
+                            setData('is_bundle', checked === true)
+                        }
+                    />
+                    <div className="grid gap-0.5">
+                        <Label>Jual sebagai paket</Label>
+                        <p className="text-xs text-muted-foreground">
+                            Paket tidak punya stok sendiri. Stok dan beratnya
+                            mengikuti isi paket, dan setiap penjualan paket
+                            memotong stok produk di dalamnya.
+                        </p>
+                    </div>
+                </div>
+
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div className="flex flex-col gap-1.5">
                         <Label>Harga (Rp)</Label>
@@ -97,36 +198,48 @@ export default function ProductForm({ product }: Props) {
                             min={0}
                             max={90}
                             value={data.discount_percent}
-                            onChange={(e) => setData('discount_percent', e.target.value)}
+                            onChange={(e) =>
+                                setData('discount_percent', e.target.value)
+                            }
                             placeholder="Kosongkan jika tidak ada diskon"
                         />
                         <InputError message={errors.discount_percent} />
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                        <Label>Stok</Label>
-                        <Input
-                            type="number"
-                            min={0}
-                            value={data.stock}
-                            onChange={(e) => setData('stock', e.target.value)}
-                        />
-                        <InputError message={errors.stock} />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                        <Label>Berat (gram)</Label>
-                        <Input
-                            type="number"
-                            min={1}
-                            value={data.weight_gram}
-                            onChange={(e) => setData('weight_gram', e.target.value)}
-                        />
-                        <InputError message={errors.weight_gram} />
-                    </div>
+                    {!data.is_bundle && (
+                        <>
+                            <div className="flex flex-col gap-1.5">
+                                <Label>Stok</Label>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    value={data.stock}
+                                    onChange={(e) =>
+                                        setData('stock', e.target.value)
+                                    }
+                                />
+                                <InputError message={errors.stock} />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                                <Label>Berat (gram)</Label>
+                                <Input
+                                    type="number"
+                                    min={1}
+                                    value={data.weight_gram}
+                                    onChange={(e) =>
+                                        setData('weight_gram', e.target.value)
+                                    }
+                                />
+                                <InputError message={errors.weight_gram} />
+                            </div>
+                        </>
+                    )}
                     <div className="flex flex-col gap-1.5">
                         <Label>Nama UMKM/Produsen</Label>
                         <Input
                             value={data.producer_name}
-                            onChange={(e) => setData('producer_name', e.target.value)}
+                            onChange={(e) =>
+                                setData('producer_name', e.target.value)
+                            }
                         />
                         <InputError message={errors.producer_name} />
                     </div>
@@ -134,16 +247,156 @@ export default function ProductForm({ product }: Props) {
                         <Label>Daerah Asal</Label>
                         <Input
                             value={data.producer_region}
-                            onChange={(e) => setData('producer_region', e.target.value)}
+                            onChange={(e) =>
+                                setData('producer_region', e.target.value)
+                            }
                         />
                         <InputError message={errors.producer_region} />
                     </div>
                 </div>
 
+                {data.is_bundle && (
+                    <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
+                        <div className="flex items-center justify-between gap-2">
+                            <Label>Isi Paket</Label>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={addBundleItem}
+                                disabled={
+                                    data.bundle_items.length >=
+                                    componentOptions.length
+                                }
+                            >
+                                <Plus className="size-4" />
+                                Tambah Produk
+                            </Button>
+                        </div>
+
+                        {componentOptions.length === 0 && (
+                            <p className="text-sm text-muted-foreground">
+                                Belum ada produk satuan yang bisa dimasukkan ke
+                                paket. Buat produk biasa terlebih dahulu.
+                            </p>
+                        )}
+
+                        {data.bundle_items.map((item, index) => (
+                            <div
+                                key={index}
+                                className="flex flex-wrap items-end gap-2"
+                            >
+                                <div className="flex min-w-50 flex-1 flex-col gap-1.5">
+                                    <Label className="text-xs">Produk</Label>
+                                    <Select
+                                        value={String(item.product_id)}
+                                        onValueChange={(value) =>
+                                            updateBundleItem(index, {
+                                                product_id: Number(value),
+                                            })
+                                        }
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Pilih produk" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {componentOptions
+                                                .filter(
+                                                    (option) =>
+                                                        option.id ===
+                                                            item.product_id ||
+                                                        !chosenIds.has(
+                                                            option.id,
+                                                        ),
+                                                )
+                                                .map((option) => (
+                                                    <SelectItem
+                                                        key={option.id}
+                                                        value={String(
+                                                            option.id,
+                                                        )}
+                                                    >
+                                                        {option.name} — stok{' '}
+                                                        {option.stock}
+                                                    </SelectItem>
+                                                ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError
+                                        message={
+                                            errors[
+                                                `bundle_items.${index}.product_id` as keyof typeof errors
+                                            ]
+                                        }
+                                    />
+                                </div>
+                                <div className="flex w-28 flex-col gap-1.5">
+                                    <Label className="text-xs">Jumlah</Label>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        value={item.quantity}
+                                        onChange={(e) =>
+                                            updateBundleItem(index, {
+                                                quantity: Number(
+                                                    e.target.value,
+                                                ),
+                                            })
+                                        }
+                                    />
+                                    <InputError
+                                        message={
+                                            errors[
+                                                `bundle_items.${index}.quantity` as keyof typeof errors
+                                            ]
+                                        }
+                                    />
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeBundleItem(index)}
+                                    aria-label="Hapus produk dari paket"
+                                >
+                                    <Trash2 className="size-4" />
+                                </Button>
+                            </div>
+                        ))}
+
+                        <InputError message={errors.bundle_items} />
+
+                        {data.bundle_items.length > 0 && (
+                            <div className="grid gap-1 rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
+                                <p>
+                                    Stok paket yang bisa dijual:{' '}
+                                    <span className="font-medium text-foreground">
+                                        {derivedStock}
+                                    </span>
+                                </p>
+                                <p>
+                                    Berat kirim:{' '}
+                                    <span className="font-medium text-foreground">
+                                        {derived.weight} gram
+                                    </span>
+                                </p>
+                                <p>
+                                    Harga bila dibeli satuan:{' '}
+                                    <span className="font-medium text-foreground">
+                                        {formatRupiah(derived.worth)}
+                                    </span>
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <div className="flex items-center gap-2">
                     <Checkbox
                         checked={data.is_active}
-                        onCheckedChange={(checked) => setData('is_active', checked === true)}
+                        onCheckedChange={(checked) =>
+                            setData('is_active', checked === true)
+                        }
                     />
                     <Label>Aktif &amp; tampil di storefront</Label>
                 </div>
@@ -155,7 +408,9 @@ export default function ProductForm({ product }: Props) {
                         maxFiles={5}
                         existingMedia={product?.images ?? []}
                         onChange={(files) => setData('images', files)}
-                        onRemoveExisting={(ids) => setData('removed_images', ids)}
+                        onRemoveExisting={(ids) =>
+                            setData('removed_images', ids)
+                        }
                     />
                     <InputError message={errors.images} />
                 </div>
@@ -169,7 +424,9 @@ export default function ProductForm({ product }: Props) {
                         Batal
                     </Button>
                     <Button type="submit" disabled={processing}>
-                        {processing && <LoaderCircle className="size-4 animate-spin" />}
+                        {processing && (
+                            <LoaderCircle className="size-4 animate-spin" />
+                        )}
                         Simpan
                     </Button>
                 </div>

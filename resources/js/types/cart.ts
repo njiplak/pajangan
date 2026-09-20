@@ -6,6 +6,7 @@ export type CartItem = {
     discount_percent: number | null;
     effective_price: number;
     quantity: number;
+    is_bundle: boolean;
     stock: number;
     subtotal: number;
     image: string | null;

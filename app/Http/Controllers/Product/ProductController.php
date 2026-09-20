@@ -38,7 +38,9 @@ class ProductController extends Controller
 
     public function create()
     {
-        return Inertia::render('product/form');
+        return Inertia::render('product/form', [
+            'componentOptions' => $this->componentOptions(),
+        ]);
     }
 
     public function store(ProductRequest $request)
@@ -54,6 +56,7 @@ class ProductController extends Controller
 
         return Inertia::render('product/form', [
             'product' => $this->transform($product),
+            'componentOptions' => $this->componentOptions((int) $id),
         ]);
     }
 
@@ -96,6 +99,31 @@ class ProductController extends Controller
                 'file_name' => $media->file_name,
                 'original_url' => $media->getUrl(),
             ])->values(),
+            'bundle_items' => $product->bundleItems->map(fn ($item) => [
+                'product_id' => $item->product_id,
+                'quantity' => $item->quantity,
+            ])->values(),
         ]);
+    }
+
+    /**
+     * Products that may be put inside a bundle. Bundles are excluded so the
+     * composition stays one level deep, and the product being edited cannot
+     * be offered as its own component.
+     */
+    private function componentOptions(?int $excludeId = null): array
+    {
+        return Product::query()
+            ->where('is_bundle', false)
+            ->when($excludeId, fn ($query) => $query->where('id', '!=', $excludeId))
+            ->orderBy('name')
+            ->get(['id', 'name', 'price', 'discount_percent', 'stock', 'weight_gram'])
+            ->map(fn (Product $product) => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'effective_price' => $product->effectivePrice(),
+                'stock' => $product->stock,
+                'weight_gram' => $product->weight_gram,
+            ])->all();
     }
 }

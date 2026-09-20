@@ -5,7 +5,8 @@ import { show as productShow } from '@/routes/products';
 import type { ProductSummary } from '@/types/product';
 
 export function ProductCard({ product }: { product: ProductSummary }) {
-    const hasDiscount = !!product.discount_percent && product.discount_percent > 0;
+    const hasDiscount =
+        !!product.discount_percent && product.discount_percent > 0;
 
     return (
         <Link href={productShow(product.slug)} className="group block">
@@ -25,6 +26,11 @@ export function ProductCard({ product }: { product: ProductSummary }) {
                     {hasDiscount && (
                         <span className="absolute top-2 left-2 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-semibold text-destructive-foreground">
                             -{product.discount_percent}%
+                        </span>
+                    )}
+                    {product.is_bundle && (
+                        <span className="absolute top-2 right-2 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold text-background">
+                            Paket
                         </span>
                     )}
                 </div>

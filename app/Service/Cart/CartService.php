@@ -24,13 +24,13 @@ class CartService
 
     public function add(int $productId, int $quantity): void
     {
-        $product = Product::query()->where('is_active', true)->findOrFail($productId);
+        $product = Product::query()->sellable()->where('is_active', true)->findOrFail($productId);
 
         $cart = $this->raw();
         $current = $cart[$productId] ?? 0;
         $desired = $current + max(1, $quantity);
 
-        $cart[$productId] = max(0, min($desired, $product->stock));
+        $cart[$productId] = max(0, min($desired, $product->availableStock()));
 
         if ($cart[$productId] <= 0) {
             unset($cart[$productId]);
@@ -54,8 +54,8 @@ class CartService
             return;
         }
 
-        $product = Product::find($productId);
-        $maxStock = $product?->stock ?? 0;
+        $product = Product::query()->sellable()->find($productId);
+        $maxStock = $product?->availableStock() ?? 0;
         $cart[$productId] = min($quantity, max(0, $maxStock));
 
         if ($cart[$productId] <= 0) {
@@ -90,7 +90,7 @@ class CartService
             return 0;
         }
 
-        $products = Product::query()->whereIn('id', array_keys($cart))->get()->keyBy('id');
+        $products = Product::query()->sellable()->whereIn('id', array_keys($cart))->get()->keyBy('id');
 
         $weight = 0;
 
@@ -98,7 +98,7 @@ class CartService
             $product = $products->get($productId);
 
             if ($product) {
-                $weight += $product->weight_gram * $quantity;
+                $weight += $product->shippingWeightGram() * $quantity;
             }
         }
 
@@ -118,7 +118,7 @@ class CartService
             return ['items' => [], 'subtotal' => 0, 'total' => 0];
         }
 
-        $products = Product::query()->whereIn('id', array_keys($cart))->get()->keyBy('id');
+        $products = Product::query()->sellable()->whereIn('id', array_keys($cart))->get()->keyBy('id');
 
         $items = [];
         $subtotal = 0;
@@ -134,7 +134,8 @@ class CartService
                 continue;
             }
 
-            $clampedQuantity = min($quantity, $product->stock);
+            $availableStock = $product->availableStock();
+            $clampedQuantity = min($quantity, $availableStock);
 
             if ($clampedQuantity <= 0) {
                 unset($cart[$productId]);
@@ -159,8 +160,9 @@ class CartService
                 'discount_percent' => $product->discount_percent,
                 'effective_price' => $product->effectivePrice(),
                 'quantity' => $clampedQuantity,
-                'stock' => $product->stock,
+                'stock' => $availableStock,
                 'subtotal' => $lineSubtotal,
+                'is_bundle' => $product->is_bundle,
                 'image' => $product->getFirstMediaUrl('images') ?: null,
             ];
         }

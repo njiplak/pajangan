@@ -22,6 +22,7 @@ class HomeController extends Controller
             ]);
 
         $featuredProducts = Product::query()
+            ->sellable()
             ->where('is_active', true)
             ->latest()
             ->take(8)
@@ -33,6 +34,8 @@ class HomeController extends Controller
                 'price' => $product->price,
                 'discount_percent' => $product->discount_percent,
                 'effective_price' => $product->effectivePrice(),
+                'stock' => $product->availableStock(),
+                'is_bundle' => $product->is_bundle,
                 'producer_name' => $product->producer_name,
                 'producer_region' => $product->producer_region,
                 'image' => $product->getFirstMediaUrl('images') ?: null,
