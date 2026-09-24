@@ -172,6 +172,9 @@ class CheckoutController extends Controller
             }
 
             $order = Order::create([
+                // Null for guests; set when signed in so the order lands in
+                // the account even if they typed a different email.
+                'customer_id' => $request->user('customer')?->id,
                 'order_number' => $this->generateOrderNumber(),
                 'customer_name' => $request->validated('customer_name'),
                 'customer_email' => $request->validated('customer_email'),

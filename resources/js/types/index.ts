@@ -27,6 +27,13 @@ export type SharedData = {
     };
     /** Null until the visitor picks one; nothing is inferred. */
     shippingDestination: ShippingDestination | null;
+    /** The signed-in shopper, or null. Never a staff user. */
+    customer: {
+        name: string;
+        email: string;
+        avatar_url: string | null;
+    } | null;
+    googleLoginEnabled: boolean;
     settings: StorefrontSettings;
     [key: string]: unknown;
 };

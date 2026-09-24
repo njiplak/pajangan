@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Customer\AccountController;
+use App\Http\Controllers\Customer\CustomerAuthController;
+use App\Http\Controllers\Customer\TrackOrderController;
 use App\Http\Controllers\Storefront\CartController;
 use App\Http\Controllers\Storefront\CheckoutController;
 use App\Http\Controllers\Storefront\OrderLookupController;
@@ -34,3 +37,20 @@ Route::post('/pesanan/{order:order_number}/bayar', [OrderLookupController::class
     ->middleware(['signed', 'checkout-mode']);
 
 Route::get('/tentang-kami', [PageController::class, 'about'])->name('about');
+
+// Customer accounts — Google sign-in only. Guest checkout is unaffected.
+Route::get('/masuk', [CustomerAuthController::class, 'login'])->name('customer.login');
+Route::get('/auth/google', [CustomerAuthController::class, 'redirect'])->name('customer.google');
+Route::get('/auth/google/callback', [CustomerAuthController::class, 'callback'])->name('customer.google.callback');
+Route::post('/keluar', [CustomerAuthController::class, 'logout'])->name('customer.logout');
+
+Route::middleware('auth:customer')->prefix('akun')->name('account.')->group(function () {
+    Route::get('/', [AccountController::class, 'index'])->name('index');
+    Route::get('/pesanan', [AccountController::class, 'orders'])->name('orders');
+    Route::put('/profil', [AccountController::class, 'updateProfile'])->name('profile');
+});
+
+Route::get('/lacak-pesanan', [TrackOrderController::class, 'show'])->name('track.show');
+Route::post('/lacak-pesanan', [TrackOrderController::class, 'lookup'])
+    ->name('track.lookup')
+    ->middleware('throttle:10,1');

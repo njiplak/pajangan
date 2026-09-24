@@ -1,10 +1,13 @@
 import { Link, usePage } from '@inertiajs/react';
-import { ShoppingBag } from 'lucide-react';
+import { ShoppingBag, UserRound } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { about, home } from '@/routes';
+import { index as accountIndex } from '@/routes/account';
 import { index as cartIndex } from '@/routes/cart';
+import { login as customerLogin } from '@/routes/customer';
 import { index as productsIndex } from '@/routes/products';
+import { show as trackOrder } from '@/routes/track';
 import type { SharedData } from '@/types';
 
 type StorefrontLayoutProps = {
@@ -12,7 +15,8 @@ type StorefrontLayoutProps = {
 };
 
 export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
-    const { cart, settings } = usePage<SharedData>().props;
+    const { cart, settings, customer, googleLoginEnabled } =
+        usePage<SharedData>().props;
     const isDisplayMode = settings.storefront_mode === 'display';
     const title = settings.storefront_title ?? 'UMKM Papua.id';
     const subtitle = settings.storefront_subtitle ?? 'Perjuangan Ekonomi Bermartabat';
@@ -54,6 +58,33 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
                     </nav>
 
                     <div className="flex items-center gap-3">
+                        {customer ? (
+                            <Link
+                                href={accountIndex()}
+                                className="flex size-9 items-center justify-center overflow-hidden rounded-full border border-border text-foreground transition-colors hover:bg-accent"
+                                aria-label="Akun saya"
+                            >
+                                {customer.avatar_url ? (
+                                    <img
+                                        src={customer.avatar_url}
+                                        alt=""
+                                        referrerPolicy="no-referrer"
+                                        className="size-full object-cover"
+                                    />
+                                ) : (
+                                    <UserRound className="size-4" />
+                                )}
+                            </Link>
+                        ) : (
+                            googleLoginEnabled && (
+                                <Link
+                                    href={customerLogin()}
+                                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                                >
+                                    Masuk
+                                </Link>
+                            )
+                        )}
                         {!isDisplayMode && (
                             <Link
                                 href={cartIndex()}
@@ -106,6 +137,23 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
                                 <Link href={about()} className="text-muted-foreground hover:text-foreground">
                                     Tentang Kami
                                 </Link>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <p className="font-medium text-foreground">Pesanan</p>
+                                <Link href={trackOrder()} className="text-muted-foreground hover:text-foreground">
+                                    Lacak Pesanan
+                                </Link>
+                                {customer ? (
+                                    <Link href={accountIndex()} className="text-muted-foreground hover:text-foreground">
+                                        Akun Saya
+                                    </Link>
+                                ) : (
+                                    googleLoginEnabled && (
+                                        <Link href={customerLogin()} className="text-muted-foreground hover:text-foreground">
+                                            Masuk
+                                        </Link>
+                                    )
+                                )}
                             </div>
                         </div>
                     </div>

@@ -9,6 +9,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -55,7 +56,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'checkout-mode' => EnsureCheckoutMode::class,
         ]);
 
-        $middleware->redirectGuestsTo('/auth/login');
+        // Customers and staff sign in in different places; sending a
+        // logged-out shopper to the staff login would strand them.
+        $middleware->redirectGuestsTo(
+            fn (Request $request) => $request->is('akun', 'akun/*') ? '/masuk' : '/auth/login'
+        );
         $middleware->redirectUsersTo('/backoffice');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
