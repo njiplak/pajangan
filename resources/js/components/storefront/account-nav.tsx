@@ -5,13 +5,17 @@ import {
     index as accountIndex,
     orders as accountOrders,
 } from '@/routes/account';
+import { index as addressesIndex } from '@/routes/account/addresses';
+import { index as wishlistIndex } from '@/routes/account/wishlist';
 import { logout } from '@/routes/customer';
 
-type Tab = 'overview' | 'orders';
+type Tab = 'overview' | 'orders' | 'addresses' | 'wishlist';
 
 const TABS: { key: Tab; label: string; href: string }[] = [
     { key: 'overview', label: 'Ringkasan', href: accountIndex().url },
     { key: 'orders', label: 'Pesanan', href: accountOrders().url },
+    { key: 'addresses', label: 'Alamat', href: addressesIndex().url },
+    { key: 'wishlist', label: 'Wishlist', href: wishlistIndex().url },
 ];
 
 export function AccountNav({ active }: { active: Tab }) {

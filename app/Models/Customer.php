@@ -35,6 +35,16 @@ class Customer extends Authenticatable
         return $this->hasMany(Order::class);
     }
 
+    public function addresses()
+    {
+        return $this->hasMany(CustomerAddress::class);
+    }
+
+    public function wishlist()
+    {
+        return $this->hasMany(WishlistItem::class);
+    }
+
     /**
      * Orders placed on this account, plus guest orders placed under the
      * same address — but the latter only once Google has verified the

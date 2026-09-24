@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Storefront;
 use App\Contract\Payment\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Service\Cart\CartService;
 use App\Service\Payment\PaymentService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
@@ -32,6 +34,11 @@ class OrderLookupController extends Controller
             // does not cover a different route.
             'payUrl' => $this->isPayable($order)
                 ? URL::signedRoute('order.pay', ['order' => $order->order_number])
+                : null,
+            // Offered once an order is past paying; a pending order's next
+            // step is to pay, not to start another.
+            'reorderUrl' => $order->status !== Order::STATUS_PENDING
+                ? URL::signedRoute('order.reorder', ['order' => $order->order_number])
                 : null,
         ]);
     }
@@ -79,6 +86,62 @@ class OrderLookupController extends Controller
         }
 
         return redirect()->to($confirmationUrl);
+    }
+
+    /**
+     * Puts a past order's items back in the cart.
+     *
+     * Goes through CartService::add, so every line is re-checked against
+     * today's catalogue: deleted or hidden products are skipped, and
+     * quantities are clamped to what is actually in stock now. The
+     * customer is told which lines did not make it rather than finding
+     * out at checkout.
+     */
+    public function reorder(Order $order, CartService $cart)
+    {
+        $order->load('items');
+
+        $unavailable = [];
+        $reduced = [];
+
+        foreach ($order->items as $item) {
+            if (! $item->product_id) {
+                $unavailable[] = $item->product_name;
+
+                continue;
+            }
+
+            $before = $cart->raw()[$item->product_id] ?? 0;
+
+            try {
+                $cart->add($item->product_id, $item->quantity);
+            } catch (ModelNotFoundException) {
+                $unavailable[] = $item->product_name;
+
+                continue;
+            }
+
+            $added = ($cart->raw()[$item->product_id] ?? 0) - $before;
+
+            if ($added <= 0) {
+                $unavailable[] = $item->product_name;
+            } elseif ($added < $item->quantity) {
+                $reduced[] = $item->product_name;
+            }
+        }
+
+        $notes = [];
+
+        if ($unavailable) {
+            $notes[] = 'Tidak tersedia lagi: '.implode(', ', $unavailable).'.';
+        }
+
+        if ($reduced) {
+            $notes[] = 'Jumlah disesuaikan dengan stok: '.implode(', ', $reduced).'.';
+        }
+
+        return redirect()->route('cart.index')
+            ->with('status', $notes ? implode(' ', $notes) : 'Produk dari pesanan sebelumnya sudah masuk keranjang.');
     }
 
     /**

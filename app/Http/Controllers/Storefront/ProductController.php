@@ -36,8 +36,13 @@ class ProductController extends Controller
             ->where('is_active', true)
             ->firstOrFail();
 
+        $customer = request()->user('customer');
+
         return Inertia::render('storefront/products/show', [
             'product' => $this->detail($product),
+            'inWishlist' => $customer
+                ? $customer->wishlist()->where('product_id', $product->id)->exists()
+                : false,
         ]);
     }
 

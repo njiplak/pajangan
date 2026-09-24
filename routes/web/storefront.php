@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\Customer\AccountController;
+use App\Http\Controllers\Customer\AddressController;
 use App\Http\Controllers\Customer\CustomerAuthController;
 use App\Http\Controllers\Customer\TrackOrderController;
+use App\Http\Controllers\Customer\WishlistController;
 use App\Http\Controllers\Storefront\CartController;
 use App\Http\Controllers\Storefront\CheckoutController;
 use App\Http\Controllers\Storefront\OrderLookupController;
@@ -36,6 +38,10 @@ Route::post('/pesanan/{order:order_number}/bayar', [OrderLookupController::class
     ->name('order.pay')
     ->middleware(['signed', 'checkout-mode']);
 
+Route::post('/pesanan/{order:order_number}/beli-lagi', [OrderLookupController::class, 'reorder'])
+    ->name('order.reorder')
+    ->middleware(['signed', 'checkout-mode']);
+
 Route::get('/tentang-kami', [PageController::class, 'about'])->name('about');
 
 // Customer accounts — Google sign-in only. Guest checkout is unaffected.
@@ -48,6 +54,15 @@ Route::middleware('auth:customer')->prefix('akun')->name('account.')->group(func
     Route::get('/', [AccountController::class, 'index'])->name('index');
     Route::get('/pesanan', [AccountController::class, 'orders'])->name('orders');
     Route::put('/profil', [AccountController::class, 'updateProfile'])->name('profile');
+
+    Route::get('/alamat', [AddressController::class, 'index'])->name('addresses.index');
+    Route::post('/alamat', [AddressController::class, 'store'])->name('addresses.store');
+    Route::put('/alamat/{address}', [AddressController::class, 'update'])->name('addresses.update');
+    Route::post('/alamat/{address}/utama', [AddressController::class, 'makeDefault'])->name('addresses.default');
+    Route::delete('/alamat/{address}', [AddressController::class, 'destroy'])->name('addresses.destroy');
+
+    Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
+    Route::post('/wishlist/{product}', [WishlistController::class, 'toggle'])->name('wishlist.toggle');
 });
 
 Route::get('/lacak-pesanan', [TrackOrderController::class, 'show'])->name('track.show');

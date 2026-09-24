@@ -1,23 +1,34 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { MessageCircle, Minus, Package, Plus, ShoppingBag } from 'lucide-react';
+import {
+    Heart,
+    MessageCircle,
+    Minus,
+    Package,
+    Plus,
+    ShoppingBag,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ShippingEstimate } from '@/components/storefront/shipping-estimate';
 import StorefrontLayout from '@/layouts/storefront-layout';
 import { FormResponse } from '@/lib/constant';
-import { formatRupiah, whatsappLink } from '@/lib/utils';
+import { cn, formatRupiah, whatsappLink } from '@/lib/utils';
+import { toggle as wishlistToggle } from '@/routes/account/wishlist';
 import { store as cartStore } from '@/routes/cart';
+import { login as customerLogin } from '@/routes/customer';
 import { show as productShow } from '@/routes/products';
 import type { SharedData } from '@/types';
 import type { ProductDetail } from '@/types/product';
 
 type Props = {
     product: ProductDetail;
+    inWishlist: boolean;
 };
 
-export default function ProductShow({ product }: Props) {
+export default function ProductShow({ product, inWishlist }: Props) {
     const [quantity, setQuantity] = useState(1);
-    const { settings } = usePage<SharedData>().props;
+    const { settings, customer, googleLoginEnabled } =
+        usePage<SharedData>().props;
     const isDisplayMode = settings.storefront_mode === 'display';
     const outOfStock = product.stock <= 0;
     const hasDiscount =
@@ -68,16 +79,57 @@ export default function ProductShow({ product }: Props) {
             </div>
 
             <div className="flex flex-col gap-4">
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                        {product.name}
-                    </h1>
-                    {(product.producer_name || product.producer_region) && (
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            {[product.producer_name, product.producer_region]
-                                .filter(Boolean)
-                                .join(' · ')}
-                        </p>
+                <div className="flex items-start justify-between gap-3">
+                    <div>
+                        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                            {product.name}
+                        </h1>
+                        {(product.producer_name || product.producer_region) && (
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                {[product.producer_name, product.producer_region]
+                                    .filter(Boolean)
+                                    .join(' · ')}
+                            </p>
+                        )}
+                    </div>
+                    {customer ? (
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            aria-pressed={inWishlist}
+                            aria-label={
+                                inWishlist
+                                    ? 'Hapus dari wishlist'
+                                    : 'Simpan ke wishlist'
+                            }
+                            onClick={() =>
+                                router.post(
+                                    wishlistToggle(product.id).url,
+                                    {},
+                                    { preserveScroll: true },
+                                )
+                            }
+                        >
+                            <Heart
+                                className={cn(
+                                    'size-4',
+                                    inWishlist && 'fill-destructive text-destructive',
+                                )}
+                            />
+                        </Button>
+                    ) : (
+                        googleLoginEnabled && (
+                            <Button
+                                asChild
+                                variant="outline"
+                                size="icon"
+                                aria-label="Masuk untuk menyimpan ke wishlist"
+                            >
+                                <Link href={customerLogin()}>
+                                    <Heart className="size-4" />
+                                </Link>
+                            </Button>
+                        )
                     )}
                 </div>
 

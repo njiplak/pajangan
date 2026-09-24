@@ -34,6 +34,9 @@ export type SharedData = {
         avatar_url: string | null;
     } | null;
     googleLoginEnabled: boolean;
+    flash: {
+        status: string | null;
+    };
     settings: StorefrontSettings;
     [key: string]: unknown;
 };

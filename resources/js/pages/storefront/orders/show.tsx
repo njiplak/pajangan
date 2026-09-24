@@ -1,9 +1,10 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     CheckCircle2,
     Clock,
     CreditCard,
     PackageCheck,
+    RotateCcw,
     Truck,
     XCircle,
 } from 'lucide-react';
@@ -11,6 +12,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StorefrontLayout from '@/layouts/storefront-layout';
 import { cn, formatRupiah } from '@/lib/utils';
+import type { SharedData } from '@/types';
 import type {
     OrderStatus,
     OrderTimelineStep,
@@ -22,6 +24,8 @@ type Props = {
     timeline: OrderTimelineStep[];
     /** Present only while the order can still be paid for. */
     payUrl: string | null;
+    /** Present once the order is past paying. */
+    reorderUrl: string | null;
 };
 
 const HEADLINE: Record<
@@ -66,7 +70,13 @@ const HEADLINE: Record<
     },
 };
 
-export default function OrderShow({ order, timeline, payUrl }: Props) {
+export default function OrderShow({
+    order,
+    timeline,
+    payUrl,
+    reorderUrl,
+}: Props) {
+    const { settings } = usePage<SharedData>().props;
     const headline = HEADLINE[order.status] ?? HEADLINE.pending;
     const Icon = headline.icon;
     const cancelled = order.status === 'cancelled';
@@ -113,6 +123,17 @@ export default function OrderShow({ order, timeline, payUrl }: Props) {
                     >
                         <CreditCard className="size-4" />
                         Bayar Sekarang
+                    </Button>
+                )}
+
+                {reorderUrl && settings.storefront_mode !== 'display' && (
+                    <Button
+                        variant="outline"
+                        className="mt-6 gap-2"
+                        onClick={() => router.post(reorderUrl)}
+                    >
+                        <RotateCcw className="size-4" />
+                        Beli Lagi
                     </Button>
                 )}
             </div>

@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShippingEstimate } from '@/components/storefront/shipping-estimate';
@@ -7,6 +7,7 @@ import { formatRupiah } from '@/lib/utils';
 import { destroy as cartDestroy, update as cartUpdate } from '@/routes/cart';
 import { index as checkoutIndex } from '@/routes/checkout';
 import { index as productsIndex } from '@/routes/products';
+import type { SharedData } from '@/types';
 import type { CartSummary } from '@/types/cart';
 
 type Props = {
@@ -14,6 +15,9 @@ type Props = {
 };
 
 export default function CartIndex({ cart }: Props) {
+    // Set by "Beli Lagi", which lands here and may have skipped items.
+    const { flash } = usePage<SharedData>().props;
+
     const changeQuantity = (productId: number, quantity: number) => {
         router.put(
             cartUpdate(productId).url,
@@ -29,6 +33,11 @@ export default function CartIndex({ cart }: Props) {
     if (cart.items.length === 0) {
         return (
             <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6">
+                {flash.status && (
+                    <p className="mb-6 rounded-md border border-border bg-muted/50 p-3 text-sm text-foreground">
+                        {flash.status}
+                    </p>
+                )}
                 <p className="text-lg font-medium text-foreground">
                     Keranjang Anda kosong
                 </p>
@@ -51,6 +60,12 @@ export default function CartIndex({ cart }: Props) {
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                 Keranjang Belanja
             </h1>
+
+            {flash.status && (
+                <p className="mt-4 rounded-md border border-border bg-muted/50 p-3 text-sm text-foreground">
+                    {flash.status}
+                </p>
+            )}
 
             <div className="mt-6 divide-y divide-border rounded-xl border border-border">
                 {cart.items.map((item) => (

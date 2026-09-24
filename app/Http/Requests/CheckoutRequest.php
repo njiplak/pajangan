@@ -34,6 +34,8 @@ class CheckoutRequest extends FormRequest
             'courier_code' => ['required', 'string', 'max:255'],
             'courier_service_code' => ['required', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'save_address' => ['nullable', 'boolean'],
+            'address_label' => ['nullable', 'string', 'max:50'],
         ];
     }
 }

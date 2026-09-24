@@ -67,6 +67,9 @@ class HandleInertiaRequests extends Middleware
                 'avatar_url' => $customer->avatar_url,
             ] : null,
             'googleLoginEnabled' => CustomerAuthController::googleEnabled(),
+            'flash' => [
+                'status' => $request->session()->get('status'),
+            ],
             'cart' => [
                 'count' => $this->cart->count(),
             ],

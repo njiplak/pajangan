@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Storefront;
 
 use App\Contract\Notification\OrderNotifierContract;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Customer\AddressController;
 use App\Http\Requests\CheckoutRequest;
 use App\Models\BundleItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Service\Cart\CartService;
+use App\Service\Customer\AddressBook;
 use App\Service\Payment\PaymentService;
 use App\Service\Shipping\ShippingProviderManager;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +30,7 @@ class CheckoutController extends Controller
         private readonly PaymentService $payment,
         private readonly ShippingProviderManager $shipping,
         private readonly OrderNotifierContract $notifier,
+        private readonly AddressBook $addressBook,
     ) {}
 
     public function index()
@@ -38,8 +41,21 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index');
         }
 
+        $customer = request()->user('customer');
+
         return Inertia::render('storefront/checkout/index', [
             'cart' => $summary,
+            // Signed-in customers get their details and address book so
+            // checkout is a pick, not a retype. Guests get neither.
+            'profile' => $customer ? [
+                'name' => $customer->name,
+                'email' => $customer->email,
+                'phone' => $customer->phone,
+            ] : null,
+            'savedAddresses' => $customer
+                ? $customer->addresses()->orderByDesc('is_default')->latest()->get()
+                    ->map(fn ($address) => AddressController::present($address))->values()
+                : [],
         ]);
     }
 
@@ -220,6 +236,8 @@ class CheckoutController extends Controller
 
         $this->cart->clear();
 
+        $this->rememberAddress($request);
+
         $confirmationUrl = URL::signedRoute('order.show', ['order' => $order->order_number]);
 
         $gatewayKey = $this->payment->activeGatewayKey();
@@ -254,6 +272,36 @@ class CheckoutController extends Controller
         }
 
         return redirect()->to($confirmationUrl);
+    }
+
+    /**
+     * Saves the typed address to the customer's book when they asked to.
+     * Runs after the order is committed and never fails it: losing a
+     * convenience is acceptable, losing the order is not.
+     */
+    private function rememberAddress(CheckoutRequest $request): void
+    {
+        $customer = $request->user('customer');
+
+        if (! $customer || ! $request->boolean('save_address')) {
+            return;
+        }
+
+        try {
+            $this->addressBook->rememberFromCheckout($customer, [
+                'label' => $request->validated('address_label'),
+                'recipient_name' => $request->validated('customer_name'),
+                'phone' => $request->validated('customer_phone'),
+                'address' => $request->validated('shipping_address'),
+                'city' => $request->validated('shipping_city'),
+                'province' => $request->validated('shipping_province'),
+                'postal_code' => $request->validated('shipping_postal_code'),
+                'destination_area_id' => $request->validated('destination_area_id'),
+                'destination_area_name' => $request->validated('destination_area_name'),
+            ]);
+        } catch (Throwable $e) {
+            Log::error("Saving checkout address failed for customer [{$customer->id}]: {$e->getMessage()}");
+        }
     }
 
     /**
