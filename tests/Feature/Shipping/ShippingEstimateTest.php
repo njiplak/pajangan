@@ -227,11 +227,11 @@ test('a courier outage leaves the page usable and retries next time', function (
 test('the estimate endpoint is unavailable in display mode', function () {
     Setting::updateOrCreate(['key' => 'storefront_mode'], ['value' => 'display']);
 
-    $this->getJson(route('shipping.estimate'))->assertNotFound();
+    $this->getJson(route('shipping.estimate'))->assertServiceUnavailable();
     $this->post(route('shipping.destination'), [
         'destination_area_id' => 'AREA-1',
         'destination_area_name' => 'Bandung',
-    ])->assertNotFound();
+    ])->assertRedirect(route('checkout.closed'));
 });
 
 test('a picked destination remembers the area parts so checkout can fill them', function () {

@@ -16,7 +16,16 @@ class EnsureCheckoutMode
         $mode = $this->settings->allAsKeyValue()['storefront_mode'] ?? 'checkout';
 
         if ($mode === 'display') {
-            abort(404);
+            // A fetch()-driven endpoint (area search, rate quotes) gets a
+            // JSON error it can show inline; a page load gets sent to an
+            // explanation instead of a bare 404.
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Toko sedang tidak menerima pesanan.',
+                ], 503);
+            }
+
+            return redirect()->route('checkout.closed');
         }
 
         return $next($request);

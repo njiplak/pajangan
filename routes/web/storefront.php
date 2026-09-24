@@ -48,6 +48,7 @@ Route::post('/pesanan/{order:order_number}/beli-lagi', [OrderLookupController::c
     ->middleware(['signed', 'checkout-mode']);
 
 Route::get('/tentang-kami', [PageController::class, 'about'])->name('about');
+Route::get('/checkout/tidak-tersedia', [PageController::class, 'closed'])->name('checkout.closed');
 
 // Customer accounts — Google sign-in only. Guest checkout is unaffected.
 Route::get('/masuk', [CustomerAuthController::class, 'login'])->name('customer.login');

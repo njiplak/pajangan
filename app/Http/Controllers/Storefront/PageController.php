@@ -23,4 +23,13 @@ class PageController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Where cart/checkout routes send a shopper while the store is in
+     * catalogue-only mode, instead of leaving them on a bare 404.
+     */
+    public function closed()
+    {
+        return Inertia::render('storefront/closed');
+    }
 }
