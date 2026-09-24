@@ -3,7 +3,6 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -13,39 +12,27 @@ class OTPMail extends Mailable
 {
     use Queueable, SerializesModels;
 
+    public function __construct(public string $otp) {}
 
-
-    /**
-     * Create a new message instance.
-     */
-    public function __construct(public string $otp)
-    {
-        $this->otp = $otp;
-    }
-
-    /**
-     * Get the message envelope.
-     */
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'O T P Mail',
+            subject: 'Kode Verifikasi Anda',
         );
     }
 
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
         return new Content(
-            view: 'view.name',
+            markdown: 'mail.auth.otp',
+            with: [
+                'otp' => $this->otp,
+                'expiresInMinutes' => (int) config('service-contract.auth.otp_expired'),
+            ],
         );
     }
 
     /**
-     * Get the attachments for the message.
-     *
      * @return array<int, \Illuminate\Mail\Mailables\Attachment>
      */
     public function attachments(): array
