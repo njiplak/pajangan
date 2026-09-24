@@ -71,6 +71,15 @@ class CheckoutController extends Controller
             ]);
         }
 
+        // Checked before anything is written: an order nothing can ever pay
+        // is not a sale, and stock must not be drawn down for it. Mirrors
+        // the same guard on the payment-retry path in OrderLookupController.
+        if (! $this->payment->activeGatewayKey()) {
+            throw ValidationException::withMessages([
+                'payment' => 'Metode pembayaran sedang tidak tersedia. Silakan hubungi kami.',
+            ]);
+        }
+
         // Priced before a single row is written. An order whose shipping
         // could not be quoted must not exist at all: the old flow created
         // it first and, when the quote failed, silently left `total` at

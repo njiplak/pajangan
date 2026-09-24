@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Http;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as GoogleUser;
 
+beforeEach(fn () => fakeDefaultPaymentGateway());
+
 function enableGoogle(): void
 {
     config([

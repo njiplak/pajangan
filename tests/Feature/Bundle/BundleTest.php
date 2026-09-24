@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
 
+beforeEach(fn () => fakeDefaultPaymentGateway());
+
 function bundleCheckoutPayload(): array
 {
     return [

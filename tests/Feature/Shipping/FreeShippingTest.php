@@ -8,6 +8,8 @@ use App\Models\Setting;
 use App\Service\Payment\PaymentGatewayManager;
 use Illuminate\Support\Facades\Http;
 
+beforeEach(fn () => fakeDefaultPaymentGateway());
+
 function freeShipRule(int $min, int $cap = 0): void
 {
     Setting::updateOrCreate(['key' => 'free_shipping_min_subtotal'], ['value' => (string) $min]);

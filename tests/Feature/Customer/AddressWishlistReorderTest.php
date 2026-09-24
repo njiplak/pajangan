@@ -8,6 +8,8 @@ use App\Service\Customer\AddressBook;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\URL;
 
+beforeEach(fn () => fakeDefaultPaymentGateway());
+
 function addressData(array $overrides = []): array
 {
     return array_merge([

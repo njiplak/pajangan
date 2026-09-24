@@ -4,6 +4,8 @@ use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Support\Facades\Http;
 
+beforeEach(fn () => fakeDefaultPaymentGateway());
+
 function checkoutPayload(): array
 {
     return [

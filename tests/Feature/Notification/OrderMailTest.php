@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Spatie\Permission\Models\Permission;
 
+beforeEach(fn () => fakeDefaultPaymentGateway());
+
 function mailCheckoutPayload(): array
 {
     return [
