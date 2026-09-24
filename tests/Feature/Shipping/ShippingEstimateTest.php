@@ -233,3 +233,31 @@ test('the estimate endpoint is unavailable in display mode', function () {
         'destination_area_name' => 'Bandung',
     ])->assertNotFound();
 });
+
+test('a picked destination remembers the area parts so checkout can fill them', function () {
+    $this->post(route('shipping.destination'), [
+        'destination_area_id' => 'AREA-ABE',
+        'destination_area_name' => 'Abepura, Jayapura, Papua. 99351',
+        'postal_code' => '99351',
+        'district' => 'Abepura',
+        'city' => 'Jayapura',
+        'province' => 'Papua',
+    ])->assertRedirect();
+
+    $this->get(route('products.index'))->assertInertia(fn ($page) => $page
+        ->where('shippingDestination.city', 'Jayapura')
+        ->where('shippingDestination.province', 'Papua')
+        ->where('shippingDestination.postal_code', '99351'));
+});
+
+test('a destination picked without area parts still works, with them empty', function () {
+    $this->post(route('shipping.destination'), [
+        'destination_area_id' => 'AREA-1',
+        'destination_area_name' => 'Bandung',
+    ]);
+
+    $this->get(route('products.index'))->assertInertia(fn ($page) => $page
+        ->where('shippingDestination.id', 'AREA-1')
+        ->where('shippingDestination.city', null)
+        ->where('shippingDestination.province', null));
+});

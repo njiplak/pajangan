@@ -35,8 +35,17 @@ test('searchAreas calls the maps endpoint with the auth header and maps the resp
 
     $areas = app(BiteshipService::class)->searchAreas('Jayapura');
 
+    // This minimal payload carries no division names; they map to null so
+    // the storefront falls back to letting the customer type them.
     expect($areas)->toBe([
-        ['id' => 'IDNP6IDNC148IDND854IDZ10730', 'name' => 'Jayapura, Papua', 'postal_code' => '99111'],
+        [
+            'id' => 'IDNP6IDNC148IDND854IDZ10730',
+            'name' => 'Jayapura, Papua',
+            'postal_code' => '99111',
+            'district' => null,
+            'city' => null,
+            'province' => null,
+        ],
     ]);
 
     Http::assertSent(function ($request) {
@@ -47,6 +56,62 @@ test('searchAreas calls the maps endpoint with the auth header and maps the resp
 
         return true;
     });
+});
+
+test('searchAreas maps the administrative divisions when Biteship supplies them', function () {
+    biteshipConfig();
+
+    // Shape per Biteship's Maps documentation; not yet captured from a
+    // live call (the API is unreachable from the build sandbox). Replace
+    // with a recorded response once one is available.
+    Http::fake([
+        'api.biteship.com/v1/maps/areas*' => Http::response([
+            'success' => true,
+            'areas' => [[
+                'id' => 'IDNP1IDNC1IDND1IDZ99351',
+                'name' => 'Abepura, Jayapura, Papua. 99351',
+                'country_name' => 'Indonesia',
+                'country_code' => 'ID',
+                'administrative_division_level_1_name' => 'Papua',
+                'administrative_division_level_1_type' => 'province',
+                'administrative_division_level_2_name' => 'Jayapura',
+                'administrative_division_level_2_type' => 'city',
+                'administrative_division_level_3_name' => 'Abepura',
+                'administrative_division_level_3_type' => 'district',
+                'postal_code' => 99351,
+            ]],
+        ], 200),
+    ]);
+
+    expect(app(BiteshipService::class)->searchAreas('abepura'))->toBe([[
+        'id' => 'IDNP1IDNC1IDND1IDZ99351',
+        'name' => 'Abepura, Jayapura, Papua. 99351',
+        // Numeric in some responses; always a string here.
+        'postal_code' => '99351',
+        'district' => 'Abepura',
+        'city' => 'Jayapura',
+        'province' => 'Papua',
+    ]]);
+});
+
+test('searchAreas treats blank division names as missing', function () {
+    biteshipConfig();
+
+    Http::fake([
+        'api.biteship.com/v1/maps/areas*' => Http::response([
+            'success' => true,
+            'areas' => [[
+                'id' => 'X', 'name' => 'X',
+                'administrative_division_level_1_name' => '  ',
+                'administrative_division_level_2_name' => null,
+                'postal_code' => '',
+            ]],
+        ], 200),
+    ]);
+
+    $area = app(BiteshipService::class)->searchAreas('x')[0];
+
+    expect([$area['province'], $area['city'], $area['postal_code']])->toBe([null, null, null]);
 });
 
 test('searchAreas throws when the response is not successful', function () {

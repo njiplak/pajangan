@@ -4,6 +4,12 @@ import { useState } from 'react';
 import AlertError from '@/components/alert-error';
 import InputError from '@/components/input-error';
 import { AccountNav } from '@/components/storefront/account-nav';
+import {
+    AreaFilledInput,
+    locksFor,
+    NO_LOCKS,
+} from '@/components/storefront/area-filled-input';
+import type { AreaLocks } from '@/components/storefront/area-filled-input';
 import { AreaSearch } from '@/components/storefront/area-search';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -185,6 +191,11 @@ function AddressForm({
             : EMPTY,
     );
 
+    // An address being edited was saved before this form knew which parts
+    // came from the courier, so it starts editable; re-picking the area
+    // locks it again.
+    const [locks, setLocks] = useState<AreaLocks>(NO_LOCKS);
+
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -221,10 +232,53 @@ function AddressForm({
                     onChange={(e) => setData('phone', e.target.value)}
                 />
             </Field>
+            <div className="sm:col-span-2">
+                <Field
+                    label="Kecamatan / kota tujuan"
+                    error={errors.destination_area_id}
+                >
+                    <AreaSearch
+                        value={data.destination_area_name}
+                        onSelect={(area) => {
+                            // The courier's area is the source of truth for
+                            // where this ships; its parts fill the address.
+                            setData((current) => ({
+                                ...current,
+                                destination_area_id: area.id,
+                                destination_area_name: area.name,
+                                city: area.city ?? current.city,
+                                province: area.province ?? current.province,
+                                postal_code:
+                                    area.postal_code ?? current.postal_code,
+                            }));
+                            setLocks(locksFor(area));
+                        }}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        Kota, provinsi, dan kode pos terisi otomatis dari
+                        pilihan ini.
+                    </p>
+                </Field>
+            </div>
+            <Field label="Kota/Kabupaten" error={errors.city}>
+                <AreaFilledInput
+                    value={data.city}
+                    locked={locks.city}
+                    onChange={(value) => setData('city', value)}
+                />
+            </Field>
+            <Field label="Provinsi" error={errors.province}>
+                <AreaFilledInput
+                    value={data.province}
+                    locked={locks.province}
+                    onChange={(value) => setData('province', value)}
+                />
+            </Field>
             <Field label="Kode pos" error={errors.postal_code}>
-                <Input
+                <AreaFilledInput
                     value={data.postal_code}
-                    onChange={(e) => setData('postal_code', e.target.value)}
+                    locked={locks.postal_code}
+                    onChange={(value) => setData('postal_code', value)}
                 />
             </Field>
             <div className="sm:col-span-2">
@@ -234,35 +288,6 @@ function AddressForm({
                         value={data.address}
                         onChange={(e) => setData('address', e.target.value)}
                         placeholder="Nama jalan, nomor rumah, RT/RW, patokan"
-                    />
-                </Field>
-            </div>
-            <Field label="Kota/Kabupaten" error={errors.city}>
-                <Input
-                    value={data.city}
-                    onChange={(e) => setData('city', e.target.value)}
-                />
-            </Field>
-            <Field label="Provinsi" error={errors.province}>
-                <Input
-                    value={data.province}
-                    onChange={(e) => setData('province', e.target.value)}
-                />
-            </Field>
-            <div className="sm:col-span-2">
-                <Field
-                    label="Area kurir (untuk hitung ongkir)"
-                    error={errors.destination_area_id}
-                >
-                    <AreaSearch
-                        value={data.destination_area_name}
-                        onSelect={(area) =>
-                            setData((current) => ({
-                                ...current,
-                                destination_area_id: area.id,
-                                destination_area_name: area.name,
-                            }))
-                        }
                     />
                 </Field>
             </div>

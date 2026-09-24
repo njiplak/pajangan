@@ -46,6 +46,10 @@ export type ShippingArea = {
     id: string;
     name: string;
     postal_code: string | null;
+    /** Null when the courier does not supply it; the field is then typed. */
+    district?: string | null;
+    city?: string | null;
+    province?: string | null;
 };
 
 export type ShippingCollectionMethod = 'pickup' | 'drop_off';

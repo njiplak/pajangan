@@ -100,7 +100,14 @@ export function ShippingEstimate({ productId, quantity = 1 }: Props) {
     const chooseArea = (area: ShippingArea) => {
         router.post(
             setDestination().url,
-            { destination_area_id: area.id, destination_area_name: area.name },
+            {
+                destination_area_id: area.id,
+                destination_area_name: area.name,
+                postal_code: area.postal_code,
+                district: area.district ?? null,
+                city: area.city ?? null,
+                province: area.province ?? null,
+            },
             {
                 preserveScroll: true,
                 onSuccess: () => {

@@ -32,6 +32,7 @@ class ShippingController extends Controller
         $this->destination->set(
             $request->validated('destination_area_id'),
             $request->validated('destination_area_name'),
+            $request->safe()->only(['postal_code', 'district', 'city', 'province']),
         );
 
         return back();

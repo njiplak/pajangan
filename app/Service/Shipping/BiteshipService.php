@@ -49,10 +49,26 @@ class BiteshipService implements ShippingProviderContract
             ->map(fn (array $area) => [
                 'id' => (string) $area['id'],
                 'name' => $area['name'],
-                'postal_code' => $area['postal_code'] ?? null,
+                'postal_code' => self::stringOrNull($area['postal_code'] ?? null),
+                // Structured parts of the area, so an address can be filled
+                // from the courier's own data instead of retyped. The key
+                // names follow Biteship's documented Maps response but have
+                // not yet been checked against a live call from this app;
+                // absent keys come back null and the storefront then leaves
+                // that field for the customer to type, as before.
+                'district' => self::stringOrNull($area['administrative_division_level_3_name'] ?? null),
+                'city' => self::stringOrNull($area['administrative_division_level_2_name'] ?? null),
+                'province' => self::stringOrNull($area['administrative_division_level_1_name'] ?? null),
             ])
             ->values()
             ->all();
+    }
+
+    private static function stringOrNull(mixed $value): ?string
+    {
+        $value = is_scalar($value) ? trim((string) $value) : '';
+
+        return $value === '' ? null : $value;
     }
 
     public function quoteRates(array $request): array

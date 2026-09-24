@@ -19,6 +19,10 @@ class ShippingDestinationRequest extends FormRequest
         return [
             'destination_area_id' => ['required', 'string', 'max:255'],
             'destination_area_name' => ['required', 'string', 'max:255'],
+            'postal_code' => ['nullable', 'string', 'max:10'],
+            'district' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'province' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

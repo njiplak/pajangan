@@ -2,6 +2,12 @@ import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import AlertError from '@/components/alert-error';
 import InputError from '@/components/input-error';
+import {
+    AreaFilledInput,
+    locksFor,
+    NO_LOCKS,
+} from '@/components/storefront/area-filled-input';
+import type { AreaLocks } from '@/components/storefront/area-filled-input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -60,6 +66,9 @@ export default function CheckoutIndex({
     const [selectedRate, setSelectedRate] = useState<ShippingRateOption | null>(null);
     const [loadingRates, setLoadingRates] = useState(false);
     const [ratesError, setRatesError] = useState<string | null>(null);
+    // City, province and postal code are locked once the courier's area
+    // supplied them, so the address cannot disagree with where it ships.
+    const [locks, setLocks] = useState<AreaLocks>(NO_LOCKS);
 
     useEffect(() => {
         if (selectedArea && areaQuery === selectedArea.name) return;
@@ -87,9 +96,13 @@ export default function CheckoutIndex({
             ...current,
             destination_area_id: area.id,
             destination_area_name: area.name,
+            shipping_city: area.city ?? current.shipping_city,
+            shipping_province: area.province ?? current.shipping_province,
+            shipping_postal_code: area.postal_code ?? current.shipping_postal_code,
             courier_code: '',
             courier_service_code: '',
         }));
+        setLocks(locksFor(area));
 
         setLoadingRates(true);
         setRatesError(null);
@@ -136,6 +149,8 @@ export default function CheckoutIndex({
             id: address.destination_area_id,
             name: address.destination_area_name,
             postal_code: address.postal_code,
+            city: address.city,
+            province: address.province,
         });
     };
 
@@ -168,7 +183,9 @@ export default function CheckoutIndex({
         onSelectArea({
             id: shippingDestination.id,
             name: shippingDestination.name,
-            postal_code: null,
+            postal_code: shippingDestination.postal_code,
+            city: shippingDestination.city,
+            province: shippingDestination.province,
         });
         // onSelectArea and applyAddress are stable for this one-shot prefill.
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -258,6 +275,7 @@ export default function CheckoutIndex({
                                 type="button"
                                 onClick={() => {
                                     setSelectedAddressId(null);
+                                    setLocks(NO_LOCKS);
                                     setData((current) => ({
                                         ...current,
                                         shipping_address: '',
@@ -307,46 +325,14 @@ export default function CheckoutIndex({
                         />
                         <InputError message={errors.customer_phone} />
                     </div>
-                    <div className="flex flex-col gap-1.5 sm:col-span-2">
-                        <Label>Alamat Pengiriman</Label>
-                        <Textarea
-                            rows={3}
-                            value={data.shipping_address}
-                            onChange={(e) => setData('shipping_address', e.target.value)}
-                        />
-                        <InputError message={errors.shipping_address} />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                        <Label>Kota/Kabupaten</Label>
-                        <Input
-                            value={data.shipping_city}
-                            onChange={(e) => setData('shipping_city', e.target.value)}
-                        />
-                        <InputError message={errors.shipping_city} />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                        <Label>Provinsi</Label>
-                        <Input
-                            value={data.shipping_province}
-                            onChange={(e) => setData('shipping_province', e.target.value)}
-                        />
-                        <InputError message={errors.shipping_province} />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                        <Label>Kode Pos (opsional)</Label>
-                        <Input
-                            value={data.shipping_postal_code}
-                            onChange={(e) => setData('shipping_postal_code', e.target.value)}
-                        />
-                        <InputError message={errors.shipping_postal_code} />
-                    </div>
                     <div className="relative flex flex-col gap-1.5 sm:col-span-2">
-                        <Label>Tujuan Pengiriman (kota/kecamatan/kode pos)</Label>
+                        <Label>Kecamatan / Kota Tujuan</Label>
                         <Input
                             value={areaQuery}
                             onChange={(e) => {
                                 setAreaQuery(e.target.value);
                                 setSelectedArea(null);
+                                setLocks(NO_LOCKS);
                                 setRates([]);
                                 setSelectedRate(null);
                                 setData((current) => ({
@@ -375,7 +361,48 @@ export default function CheckoutIndex({
                                 ))}
                             </ul>
                         )}
+                        <p className="text-xs text-muted-foreground">
+                            Kota, provinsi, dan kode pos terisi otomatis dari
+                            pilihan ini.
+                        </p>
                         <InputError message={errors.destination_area_id} />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <Label>Kota/Kabupaten</Label>
+                        <AreaFilledInput
+                            value={data.shipping_city}
+                            locked={locks.city}
+                            onChange={(value) => setData('shipping_city', value)}
+                        />
+                        <InputError message={errors.shipping_city} />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <Label>Provinsi</Label>
+                        <AreaFilledInput
+                            value={data.shipping_province}
+                            locked={locks.province}
+                            onChange={(value) => setData('shipping_province', value)}
+                        />
+                        <InputError message={errors.shipping_province} />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <Label>Kode Pos (opsional)</Label>
+                        <AreaFilledInput
+                            value={data.shipping_postal_code}
+                            locked={locks.postal_code}
+                            onChange={(value) => setData('shipping_postal_code', value)}
+                        />
+                        <InputError message={errors.shipping_postal_code} />
+                    </div>
+                    <div className="flex flex-col gap-1.5 sm:col-span-2">
+                        <Label>Alamat Pengiriman</Label>
+                        <Textarea
+                            rows={3}
+                            value={data.shipping_address}
+                            onChange={(e) => setData('shipping_address', e.target.value)}
+                            placeholder="Nama jalan, nomor rumah, RT/RW, patokan"
+                        />
+                        <InputError message={errors.shipping_address} />
                     </div>
                     <div className="flex flex-col gap-1.5 sm:col-span-2">
                         <Label>Catatan (opsional)</Label>

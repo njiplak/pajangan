@@ -17,8 +17,13 @@ class ShippingDestination
 {
     private const SESSION_KEY = 'shipping_destination';
 
+    private const PARTS = ['postal_code', 'district', 'city', 'province'];
+
     /**
-     * @return array{id: string, name: string}|null
+     * The structured parts are whatever the courier supplied when the area
+     * was picked, so checkout can fill (and lock) them without asking.
+     *
+     * @return array{id: string, name: string, postal_code: ?string, district: ?string, city: ?string, province: ?string}|null
      */
     public function get(): ?array
     {
@@ -28,12 +33,24 @@ class ShippingDestination
             return null;
         }
 
-        return ['id' => (string) $stored['id'], 'name' => (string) $stored['name']];
+        $destination = ['id' => (string) $stored['id'], 'name' => (string) $stored['name']];
+
+        foreach (self::PARTS as $part) {
+            $destination[$part] = filled($stored[$part] ?? null) ? (string) $stored[$part] : null;
+        }
+
+        return $destination;
     }
 
-    public function set(string $areaId, string $areaName): void
+    /**
+     * @param  array<string, ?string>  $parts  postal_code, district, city, province
+     */
+    public function set(string $areaId, string $areaName, array $parts = []): void
     {
-        Session::put(self::SESSION_KEY, ['id' => $areaId, 'name' => $areaName]);
+        Session::put(
+            self::SESSION_KEY,
+            ['id' => $areaId, 'name' => $areaName] + array_intersect_key($parts, array_flip(self::PARTS))
+        );
     }
 
     public function forget(): void
