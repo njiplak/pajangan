@@ -54,6 +54,11 @@ class OrderController extends Controller
     {
         $order = $this->service->find($id, ['items']);
 
+        // find() reports a missing record by returning the exception.
+        if ($order instanceof \Exception) {
+            abort(404);
+        }
+
         return Inertia::render('order/show', [
             'order' => $order,
             'statuses' => Order::STATUSES,

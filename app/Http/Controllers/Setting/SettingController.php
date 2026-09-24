@@ -48,6 +48,11 @@ class SettingController extends Controller
     public function show($id)
     {
         $data = $this->service->find($id);
+
+        // find() reports a missing record by returning the exception.
+        if ($data instanceof \Exception) {
+            abort(404);
+        }
         return Inertia::render('setting/setting/form', [
             "setting" => $data
         ]);

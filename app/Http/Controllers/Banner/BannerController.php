@@ -52,6 +52,11 @@ class BannerController extends Controller
     {
         $banner = $this->service->find($id);
 
+        // find() reports a missing record by returning the exception.
+        if ($banner instanceof \Exception) {
+            abort(404);
+        }
+
         return Inertia::render('banner/form', [
             'banner' => $this->transform($banner),
         ]);

@@ -58,6 +58,11 @@ class ProductController extends Controller
     {
         $product = $this->service->find($id);
 
+        // find() reports a missing record by returning the exception.
+        if ($product instanceof \Exception) {
+            abort(404);
+        }
+
         return Inertia::render('product/form', [
             'product' => $this->transform($product),
             'componentOptions' => $this->componentOptions((int) $id),
