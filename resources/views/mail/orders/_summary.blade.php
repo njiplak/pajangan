@@ -14,6 +14,9 @@
 @if ($order->shipping_cost)
 <br>**Ongkir{{ $order->courier_name ? ' ('.$order->courier_name.')' : '' }}:** {{ $rupiah($order->shipping_cost) }}
 @endif
+@if ($order->shipping_discount)
+<br>**Gratis ongkir:** −{{ $rupiah($order->shipping_discount) }}
+@endif
 @if ($order->admin_fee)
 <br>**Biaya admin:** {{ $rupiah($order->admin_fee) }}
 @endif

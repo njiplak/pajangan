@@ -78,6 +78,7 @@ export type StorefrontOrder = {
     tracking_number: string | null;
     subtotal: number;
     shipping_cost: number;
+    shipping_discount: number;
     admin_fee: number;
     total: number;
     items: {

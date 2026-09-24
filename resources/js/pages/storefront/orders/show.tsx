@@ -230,6 +230,16 @@ export default function OrderShow({
                             {formatRupiah(order.shipping_cost)}
                         </dd>
                     </div>
+                    {order.shipping_discount > 0 && (
+                        <div className="flex justify-between">
+                            <dt className="text-emerald-700 dark:text-emerald-400">
+                                Gratis ongkir
+                            </dt>
+                            <dd className="text-emerald-700 dark:text-emerald-400">
+                                −{formatRupiah(order.shipping_discount)}
+                            </dd>
+                        </div>
+                    )}
                     {order.admin_fee > 0 && (
                         <div className="flex justify-between">
                             <dt className="text-muted-foreground">

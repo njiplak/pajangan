@@ -63,6 +63,16 @@ class SettingSeeder extends Seeder
                 'value' => '10',
             ],
             [
+                // Free shipping from this subtotal (Rupiah). 0 keeps it off.
+                'key' => 'free_shipping_min_subtotal',
+                'value' => '0',
+            ],
+            [
+                // Most ongkir the store absorbs per order. 0 means no cap.
+                'key' => 'free_shipping_max_subsidy',
+                'value' => '0',
+            ],
+            [
                 // Hours an unpaid order holds its stock before
                 // orders:expire-unpaid cancels it and hands the stock back.
                 'key' => 'order_unpaid_hold_hours',

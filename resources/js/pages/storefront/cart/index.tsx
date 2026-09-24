@@ -3,6 +3,7 @@ import { Minus, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShippingEstimate } from '@/components/storefront/shipping-estimate';
 import StorefrontLayout from '@/layouts/storefront-layout';
+import { freeShippingRule } from '@/lib/free-shipping';
 import { formatRupiah } from '@/lib/utils';
 import { destroy as cartDestroy, update as cartUpdate } from '@/routes/cart';
 import { index as checkoutIndex } from '@/routes/checkout';
@@ -16,7 +17,9 @@ type Props = {
 
 export default function CartIndex({ cart }: Props) {
     // Set by "Beli Lagi", which lands here and may have skipped items.
-    const { flash } = usePage<SharedData>().props;
+    const { flash, settings } = usePage<SharedData>().props;
+    const freeShipping = freeShippingRule(settings);
+    const toFreeShipping = freeShipping.threshold - cart.subtotal;
 
     const changeQuantity = (productId: number, quantity: number) => {
         router.put(
@@ -129,6 +132,33 @@ export default function CartIndex({ cart }: Props) {
                     </div>
                 ))}
             </div>
+
+            {freeShipping.enabled && (
+                <p className="mt-6 rounded-md border border-emerald-600/30 bg-emerald-500/5 p-3 text-sm text-foreground">
+                    {toFreeShipping > 0 ? (
+                        <>
+                            Tambah{' '}
+                            <span className="font-semibold">
+                                {formatRupiah(toFreeShipping)}
+                            </span>{' '}
+                            lagi untuk <span className="font-semibold">gratis ongkir</span>
+                            {freeShipping.cap > 0
+                                ? ` (hingga ${formatRupiah(freeShipping.cap)})`
+                                : ''}
+                            .
+                        </>
+                    ) : (
+                        <>
+                            Belanjaan Anda dapat{' '}
+                            <span className="font-semibold">gratis ongkir</span>
+                            {freeShipping.cap > 0
+                                ? ` hingga ${formatRupiah(freeShipping.cap)}`
+                                : ''}
+                            . Potongannya muncul saat checkout.
+                        </>
+                    )}
+                </p>
+            )}
 
             <div className="mt-6">
                 <ShippingEstimate />

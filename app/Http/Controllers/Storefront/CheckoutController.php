@@ -13,6 +13,7 @@ use App\Models\Product;
 use App\Service\Cart\CartService;
 use App\Service\Customer\AddressBook;
 use App\Service\Payment\PaymentService;
+use App\Service\Shipping\FreeShipping;
 use App\Service\Shipping\ShippingProviderManager;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -31,6 +32,7 @@ class CheckoutController extends Controller
         private readonly ShippingProviderManager $shipping,
         private readonly OrderNotifierContract $notifier,
         private readonly AddressBook $addressBook,
+        private readonly FreeShipping $freeShipping,
     ) {}
 
     public function index()
@@ -187,6 +189,9 @@ class CheckoutController extends Controller
                 ]);
             }
 
+            // Judged on the authoritative subtotal computed under lock.
+            $shippingDiscount = $this->freeShipping->discountFor($subtotal, $quoted['price']);
+
             $order = Order::create([
                 // Null for guests; set when signed in so the order lands in
                 // the account even if they typed a different email.
@@ -206,12 +211,13 @@ class CheckoutController extends Controller
                 'status' => Order::STATUS_PENDING,
                 'subtotal' => $subtotal,
                 'shipping_cost' => $quoted['price'],
+                'shipping_discount' => $shippingDiscount,
                 'shipping_area_id' => $request->validated('destination_area_id'),
                 'shipping_area_name' => $request->validated('destination_area_name'),
                 'courier_code' => $quoted['courier_code'],
                 'courier_name' => $quoted['courier_name'],
                 'courier_service' => $quoted['courier_service_code'],
-                'total' => $subtotal + $quoted['price'],
+                'total' => $subtotal + $quoted['price'] - $shippingDiscount,
             ]);
 
             foreach ($lineItems as $item) {

@@ -166,6 +166,7 @@ class OrderLookupController extends Controller
             'tracking_number' => $order->tracking_number,
             'subtotal' => (int) $order->subtotal,
             'shipping_cost' => (int) ($order->shipping_cost ?? 0),
+            'shipping_discount' => (int) ($order->shipping_discount ?? 0),
             'admin_fee' => (int) ($order->admin_fee ?? 0),
             'total' => (int) $order->total,
             'items' => $order->items->map(fn ($item) => [

@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import StorefrontLayout from '@/layouts/storefront-layout';
 import { FormResponse } from '@/lib/constant';
+import { freeShippingRule } from '@/lib/free-shipping';
 import { cn, formatRupiah, getCsrfToken } from '@/lib/utils';
 import { store as checkoutStore, shippingAreas, shippingRates } from '@/routes/checkout';
 import type { SharedData } from '@/types';
@@ -30,7 +31,7 @@ export default function CheckoutIndex({
     profile,
     savedAddresses,
 }: Props) {
-    const { shippingDestination, googleLoginEnabled } =
+    const { shippingDestination, googleLoginEnabled, settings } =
         usePage<SharedData>().props;
     const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
         null,
@@ -183,6 +184,10 @@ export default function CheckoutIndex({
     };
 
     const shippingCost = selectedRate?.price ?? 0;
+    const shippingDiscount = freeShippingRule(settings).discountFor(
+        cart.subtotal,
+        shippingCost,
+    );
     const canSubmit = Boolean(selectedArea && selectedRate) && !processing;
 
     const onSubmit = (e: React.FormEvent) => {
@@ -485,9 +490,17 @@ export default function CheckoutIndex({
                             {selectedRate ? formatRupiah(shippingCost) : 'Pilih kurir dahulu'}
                         </span>
                     </div>
+                    {shippingDiscount > 0 && (
+                        <div className="flex justify-between text-emerald-700 dark:text-emerald-400">
+                            <span>Gratis ongkir</span>
+                            <span>−{formatRupiah(shippingDiscount)}</span>
+                        </div>
+                    )}
                     <div className="flex justify-between font-semibold text-foreground">
                         <span>Total</span>
-                        <span>{formatRupiah(cart.subtotal + shippingCost)}</span>
+                        <span>
+                            {formatRupiah(cart.subtotal + shippingCost - shippingDiscount)}
+                        </span>
                     </div>
                 </div>
             </div>

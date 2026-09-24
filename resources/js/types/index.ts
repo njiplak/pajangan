@@ -16,6 +16,8 @@ export type StorefrontSettings = {
     storefront_hero_subtitle?: string;
     seo_default_description?: string;
     seo_og_image_url?: string;
+    free_shipping_min_subtotal?: string;
+    free_shipping_max_subsidy?: string;
 } & Record<string, string>;
 
 export type SharedData = {
