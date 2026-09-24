@@ -10,6 +10,7 @@ export type Product = Model & {
     stock: number;
     weight_gram: number;
     producer_id: number | null;
+    category_id: number | null;
     producer_name: string | null;
     producer_region: string | null;
     is_active: boolean;

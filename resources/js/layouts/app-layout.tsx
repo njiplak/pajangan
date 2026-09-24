@@ -10,6 +10,7 @@ import {
     Settings,
     ShoppingCart,
     Star,
+    Tags,
     Truck,
     Users,
     UsersRound,
@@ -259,6 +260,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
                                         >
                                             <UsersRound />
                                             <span>Produsen</span>
+                                        </Link>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton
+                                        asChild
+                                        isActive={isMenuActive(
+                                            backoffice.category.index.url(),
+                                        )}
+                                    >
+                                        <Link
+                                            href={backoffice.category.index.url()}
+                                        >
+                                            <Tags />
+                                            <span>Kategori</span>
                                         </Link>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>

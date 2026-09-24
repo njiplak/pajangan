@@ -35,6 +35,7 @@ class ProductRequest extends FormRequest
             'weight_gram' => [Rule::requiredIf(! $isBundle), 'integer', 'min:1'],
             // Name and region are derived from the producer in ProductService.
             'producer_id' => ['nullable', 'integer', 'exists:producers,id'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'is_active' => ['nullable', 'boolean'],
             'is_bundle' => ['nullable', 'boolean'],
             'bundle_items' => [Rule::requiredIf($isBundle), 'array', ...($isBundle ? ['min:1'] : [])],

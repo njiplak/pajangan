@@ -6,6 +6,7 @@ use App\Contract\Auth\UserAuthContract;
 use App\Contract\AuthContract;
 use App\Contract\Banner\BannerContract;
 use App\Contract\BaseContract;
+use App\Contract\Category\CategoryContract;
 use App\Contract\Notification\OrderNotifierContract;
 use App\Contract\Order\OrderContract;
 use App\Contract\Page\PageContract;
@@ -19,6 +20,7 @@ use App\Service\Auth\UserAuthService;
 use App\Service\AuthService;
 use App\Service\Banner\BannerService;
 use App\Service\BaseService;
+use App\Service\Category\CategoryService;
 use App\Service\Notification\MailOrderNotifier;
 use App\Service\Order\OrderService;
 use App\Service\Page\PageService;
@@ -50,6 +52,7 @@ class ContractProvider extends ServiceProvider
         PageContract::class => PageService::class,
         BannerContract::class => BannerService::class,
         ProducerContract::class => ProducerService::class,
+        CategoryContract::class => CategoryService::class,
 
         // Notification — email today; a WhatsApp notifier swaps in here.
         OrderNotifierContract::class => MailOrderNotifier::class,

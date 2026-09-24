@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
 use App\Models\BundleItem;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductReview;
 use Illuminate\Http\Request;
@@ -14,12 +15,17 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $search = trim((string) $request->query('q', ''));
+        $categorySlug = trim((string) $request->query('kategori', ''));
+        // An unknown slug (a renamed or deleted category in an old link)
+        // shows everything rather than an empty page.
+        $category = $categorySlug !== '' ? Category::query()->where('slug', $categorySlug)->first() : null;
 
         $products = Product::query()
             ->sellable()
             ->withRating()
             ->where('is_active', true)
             ->when($search !== '', fn ($query) => $query->where('name', 'like', "%{$search}%"))
+            ->when($category, fn ($query) => $query->where('category_id', $category->id))
             ->latest()
             ->paginate(12)
             ->withQueryString();
@@ -27,6 +33,13 @@ class ProductController extends Controller
         return Inertia::render('storefront/products/index', [
             'products' => $products->through(fn (Product $product) => $this->summarize($product)),
             'search' => $search,
+            // Only categories with something to show, so no chip leads nowhere.
+            'categories' => Category::query()
+                ->whereHas('products', fn ($query) => $query->where('is_active', true))
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(['name', 'slug']),
+            'activeCategory' => $category?->slug,
         ]);
     }
 

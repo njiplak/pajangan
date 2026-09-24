@@ -18,6 +18,7 @@ import AppLayout from '@/layouts/app-layout';
 import { FormResponse } from '@/lib/constant';
 import { formatRupiah } from '@/lib/utils';
 import { index, store, update } from '@/routes/backoffice/product';
+import type { CategoryOption } from '@/types/category';
 import type { ProducerOption } from '@/types/producer';
 import type {
     BundleItemInput,
@@ -29,12 +30,14 @@ type Props = {
     product?: Product;
     componentOptions: ComponentOption[];
     producerOptions: ProducerOption[];
+    categoryOptions: CategoryOption[];
 };
 
 export default function ProductForm({
     product,
     componentOptions,
     producerOptions,
+    categoryOptions,
 }: Props) {
     const { data, setData, post, transform, errors, processing } = useForm<{
         name: string;
@@ -44,6 +47,7 @@ export default function ProductForm({
         stock: number | string;
         weight_gram: number | string;
         producer_id: string;
+        category_id: string;
         is_active: boolean;
         is_bundle: boolean;
         bundle_items: BundleItemInput[];
@@ -57,6 +61,7 @@ export default function ProductForm({
         stock: product?.stock ?? 0,
         weight_gram: product?.weight_gram ?? 1000,
         producer_id: product?.producer_id ? String(product.producer_id) : '',
+        category_id: product?.category_id ? String(product.category_id) : '',
         is_active: product?.is_active ?? true,
         is_bundle: product?.is_bundle ?? false,
         bundle_items: product?.bundle_items ?? [],
@@ -273,6 +278,36 @@ export default function ProductForm({
                             Produsen.
                         </p>
                         <InputError message={errors.producer_id} />
+                    </div>
+                    <div className="flex flex-col gap-1.5 sm:col-span-2">
+                        <Label>Kategori</Label>
+                        <Select
+                            value={data.category_id || 'none'}
+                            onValueChange={(value) =>
+                                setData(
+                                    'category_id',
+                                    value === 'none' ? '' : value,
+                                )
+                            }
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Pilih kategori" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">
+                                    Tanpa kategori
+                                </SelectItem>
+                                {categoryOptions.map((category) => (
+                                    <SelectItem
+                                        key={category.id}
+                                        value={String(category.id)}
+                                    >
+                                        {category.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <InputError message={errors.category_id} />
                     </div>
                 </div>
 

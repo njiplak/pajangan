@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BackofficeController;
 use App\Http\Controllers\Banner\BannerController;
+use App\Http\Controllers\Category\CategoryController;
 use App\Http\Controllers\Order\OrderController;
 use App\Http\Controllers\Page\PageController;
 use App\Http\Controllers\Producer\ProducerController;
@@ -33,6 +34,17 @@ Route::group(['middleware' => 'auth', 'prefix' => 'backoffice', 'as' => 'backoff
         Route::put('/{id}', [ProducerController::class, 'update'])->name('update')->middleware('permission:product.update');
         Route::delete('/{id}', [ProducerController::class, 'destroy'])->name('destroy')->middleware('permission:product.delete');
         Route::post('/destroy-bulk', [ProducerController::class, 'destroy_bulk'])->name('destroy-bulk')->middleware('permission:product.delete');
+    });
+
+    Route::group(['prefix' => 'category', 'as' => 'category.'], function () {
+        Route::get('/', [CategoryController::class, 'index'])->name('index')->middleware('permission:product.view');
+        Route::get('/fetch', [CategoryController::class, 'fetch'])->name('fetch')->middleware('permission:product.view');
+        Route::get('/create', [CategoryController::class, 'create'])->name('create')->middleware('permission:product.create');
+        Route::post('/', [CategoryController::class, 'store'])->name('store')->middleware('permission:product.create');
+        Route::get('/{id}', [CategoryController::class, 'show'])->name('show')->middleware('permission:product.update');
+        Route::put('/{id}', [CategoryController::class, 'update'])->name('update')->middleware('permission:product.update');
+        Route::delete('/{id}', [CategoryController::class, 'destroy'])->name('destroy')->middleware('permission:product.delete');
+        Route::post('/destroy-bulk', [CategoryController::class, 'destroy_bulk'])->name('destroy-bulk')->middleware('permission:product.delete');
     });
 
     Route::group(['prefix' => 'review', 'as' => 'review.'], function () {

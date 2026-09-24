@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Product;
 use App\Contract\Product\ProductContract;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ProductRequest;
+use App\Models\Category;
 use App\Models\Producer;
 use App\Models\Product;
 use App\Utils\WebResponse;
@@ -42,6 +43,7 @@ class ProductController extends Controller
         return Inertia::render('product/form', [
             'componentOptions' => $this->componentOptions(),
             'producerOptions' => $this->producerOptions(),
+            'categoryOptions' => Category::query()->orderBy('sort_order')->orderBy('name')->get(['id', 'name'])->toArray(),
         ]);
     }
 
@@ -60,6 +62,7 @@ class ProductController extends Controller
             'product' => $this->transform($product),
             'componentOptions' => $this->componentOptions((int) $id),
             'producerOptions' => $this->producerOptions(),
+            'categoryOptions' => Category::query()->orderBy('sort_order')->orderBy('name')->get(['id', 'name'])->toArray(),
         ]);
     }
 

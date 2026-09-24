@@ -20,6 +20,7 @@ class Product extends Model implements HasMedia
         'stock',
         'weight_gram',
         'producer_id',
+        'category_id',
         'producer_name',
         'producer_region',
         'is_active',
@@ -166,6 +167,11 @@ class Product extends Model implements HasMedia
     public function producer()
     {
         return $this->belongsTo(Producer::class);
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
     }
 
     /**
