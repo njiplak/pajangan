@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Product;
 use App\Contract\Product\ProductContract;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ProductRequest;
+use App\Models\Category;
+use App\Models\Producer;
 use App\Models\Product;
 use App\Utils\WebResponse;
 use Illuminate\Http\Request;
@@ -38,7 +40,11 @@ class ProductController extends Controller
 
     public function create()
     {
-        return Inertia::render('product/form');
+        return Inertia::render('product/form', [
+            'componentOptions' => $this->componentOptions(),
+            'producerOptions' => $this->producerOptions(),
+            'categoryOptions' => Category::query()->orderBy('sort_order')->orderBy('name')->get(['id', 'name'])->toArray(),
+        ]);
     }
 
     public function store(ProductRequest $request)
@@ -52,8 +58,16 @@ class ProductController extends Controller
     {
         $product = $this->service->find($id);
 
+        // find() reports a missing record by returning the exception.
+        if ($product instanceof \Exception) {
+            abort(404);
+        }
+
         return Inertia::render('product/form', [
             'product' => $this->transform($product),
+            'componentOptions' => $this->componentOptions((int) $id),
+            'producerOptions' => $this->producerOptions(),
+            'categoryOptions' => Category::query()->orderBy('sort_order')->orderBy('name')->get(['id', 'name'])->toArray(),
         ]);
     }
 
@@ -96,6 +110,36 @@ class ProductController extends Controller
                 'file_name' => $media->file_name,
                 'original_url' => $media->getUrl(),
             ])->values(),
+            'bundle_items' => $product->bundleItems->map(fn ($item) => [
+                'product_id' => $item->product_id,
+                'quantity' => $item->quantity,
+            ])->values(),
         ]);
+    }
+
+    private function producerOptions(): array
+    {
+        return Producer::query()->orderBy('name')->get(['id', 'name', 'region'])->toArray();
+    }
+
+    /**
+     * Products that may be put inside a bundle. Bundles are excluded so the
+     * composition stays one level deep, and the product being edited cannot
+     * be offered as its own component.
+     */
+    private function componentOptions(?int $excludeId = null): array
+    {
+        return Product::query()
+            ->where('is_bundle', false)
+            ->when($excludeId, fn ($query) => $query->where('id', '!=', $excludeId))
+            ->orderBy('name')
+            ->get(['id', 'name', 'price', 'discount_percent', 'stock', 'weight_gram'])
+            ->map(fn (Product $product) => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'effective_price' => $product->effectivePrice(),
+                'stock' => $product->stock,
+                'weight_gram' => $product->weight_gram,
+            ])->all();
     }
 }

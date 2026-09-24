@@ -65,7 +65,12 @@ class PaymentService
         }
 
         [$fee, $borneBy] = $this->resolveAdminFee($settings, $gatewayKey, $options['method'] ?? null, $order->subtotal);
-        $amount = $order->subtotal + (int) ($order->shipping_cost ?? 0) + $fee;
+        // shipping_discount is the ongkir the store absorbed at checkout;
+        // leaving it out here would charge the customer for "free" shipping.
+        $amount = $order->subtotal
+            + (int) ($order->shipping_cost ?? 0)
+            - (int) ($order->shipping_discount ?? 0)
+            + $fee;
 
         $result = $gateway->createTransaction($order, $amount, $options);
 

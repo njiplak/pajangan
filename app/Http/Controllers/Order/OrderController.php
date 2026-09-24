@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Order;
 
+use App\Contract\Notification\OrderNotifierContract;
 use App\Contract\Order\OrderContract;
 use App\Contract\Setting\SettingContract;
 use App\Http\Controllers\Controller;
@@ -24,6 +25,7 @@ class OrderController extends Controller
     public function __construct(
         OrderContract $service,
         private readonly ShippingProviderManager $shipping,
+        private readonly OrderNotifierContract $notifier,
         private readonly SettingContract $settings,
     ) {
         $this->service = $service;
@@ -51,6 +53,11 @@ class OrderController extends Controller
     public function show($id)
     {
         $order = $this->service->find($id, ['items']);
+
+        // find() reports a missing record by returning the exception.
+        if ($order instanceof \Exception) {
+            abort(404);
+        }
 
         return Inertia::render('order/show', [
             'order' => $order,
@@ -155,6 +162,12 @@ class OrderController extends Controller
             'shipping_area_id' => $request->validated('destination_area_id'),
             'shipping_area_name' => $request->validated('destination_area_name') ?? $order->shipping_area_name,
         ]);
+
+        // Only once the shipment record saved — updateShipping reports a
+        // failure by returning the exception rather than throwing.
+        if (! $data instanceof \Exception) {
+            $this->notifier->orderShipped($data);
+        }
 
         return WebResponse::response($data);
     }

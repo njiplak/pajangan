@@ -6,8 +6,11 @@ use App\Contract\Auth\UserAuthContract;
 use App\Contract\AuthContract;
 use App\Contract\Banner\BannerContract;
 use App\Contract\BaseContract;
+use App\Contract\Category\CategoryContract;
+use App\Contract\Notification\OrderNotifierContract;
 use App\Contract\Order\OrderContract;
 use App\Contract\Page\PageContract;
+use App\Contract\Producer\ProducerContract;
 use App\Contract\Product\ProductContract;
 use App\Contract\Setting\PermissionContract;
 use App\Contract\Setting\RoleContract;
@@ -17,8 +20,11 @@ use App\Service\Auth\UserAuthService;
 use App\Service\AuthService;
 use App\Service\Banner\BannerService;
 use App\Service\BaseService;
+use App\Service\Category\CategoryService;
+use App\Service\Notification\MailOrderNotifier;
 use App\Service\Order\OrderService;
 use App\Service\Page\PageService;
+use App\Service\Producer\ProducerService;
 use App\Service\Product\ProductService;
 use App\Service\Setting\PermissionService;
 use App\Service\Setting\RoleService;
@@ -45,6 +51,11 @@ class ContractProvider extends ServiceProvider
         OrderContract::class => OrderService::class,
         PageContract::class => PageService::class,
         BannerContract::class => BannerService::class,
+        ProducerContract::class => ProducerService::class,
+        CategoryContract::class => CategoryService::class,
+
+        // Notification — email today; a WhatsApp notifier swaps in here.
+        OrderNotifierContract::class => MailOrderNotifier::class,
     ];
 
     public function register(): void

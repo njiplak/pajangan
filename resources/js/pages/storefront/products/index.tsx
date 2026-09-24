@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 import { ProductCard } from '@/components/storefront/product-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,19 +17,40 @@ type Props = {
         links: PaginationLink[];
     };
     search: string;
+    categories: { name: string; slug: string }[];
+    activeCategory: string | null;
 };
 
-export default function ProductsIndex({ products, search }: Props) {
+export default function ProductsIndex({
+    products,
+    search,
+    categories,
+    activeCategory,
+}: Props) {
     const [query, setQuery] = useState(search);
 
     const onSearch = (e: React.FormEvent) => {
         e.preventDefault();
         router.get(
             productsIndex().url,
-            { q: query },
+            // Searching keeps the chosen category, and vice versa below.
+            {
+                q: query,
+                ...(activeCategory ? { kategori: activeCategory } : {}),
+            },
             { preserveState: true, replace: true },
         );
     };
+
+    const categoryHref = (slug: string | null) =>
+        productsIndex({
+            query: {
+                ...(search ? { q: search } : {}),
+                ...(slug ? { kategori: slug } : {}),
+            },
+        }).url;
+
+    const activeName = categories.find((c) => c.slug === activeCategory)?.name;
 
     return (
         <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -41,9 +63,12 @@ export default function ProductsIndex({ products, search }: Props) {
 
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                    Semua Produk
+                    {activeName ?? 'Semua Produk'}
                 </h1>
-                <form onSubmit={onSearch} className="flex w-full max-w-sm items-center gap-2">
+                <form
+                    onSubmit={onSearch}
+                    className="flex w-full max-w-sm items-center gap-2"
+                >
                     <Input
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
@@ -54,6 +79,32 @@ export default function ProductsIndex({ products, search }: Props) {
                     </Button>
                 </form>
             </div>
+
+            {categories.length > 0 && (
+                <nav
+                    aria-label="Kategori"
+                    className="-mx-4 mt-6 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0"
+                >
+                    {[{ name: 'Semua', slug: null }, ...categories].map(
+                        (category) => (
+                            <Link
+                                key={category.slug ?? 'all'}
+                                href={categoryHref(category.slug)}
+                                preserveScroll
+                                className={cn(
+                                    'rounded-full border px-3 py-1.5 text-sm whitespace-nowrap transition-colors',
+                                    (category.slug ?? null) ===
+                                        (activeCategory ?? null)
+                                        ? 'border-primary bg-primary text-primary-foreground'
+                                        : 'border-border text-muted-foreground hover:text-foreground',
+                                )}
+                            >
+                                {category.name}
+                            </Link>
+                        ),
+                    )}
+                </nav>
+            )}
 
             {products.data.length === 0 ? (
                 <p className="mt-10 text-sm text-muted-foreground">
@@ -91,4 +142,6 @@ export default function ProductsIndex({ products, search }: Props) {
     );
 }
 
-ProductsIndex.layout = (page: React.ReactNode) => <StorefrontLayout>{page}</StorefrontLayout>;
+ProductsIndex.layout = (page: React.ReactNode) => (
+    <StorefrontLayout>{page}</StorefrontLayout>
+);

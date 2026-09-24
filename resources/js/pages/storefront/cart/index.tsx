@@ -1,11 +1,14 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ShippingEstimate } from '@/components/storefront/shipping-estimate';
 import StorefrontLayout from '@/layouts/storefront-layout';
+import { freeShippingRule } from '@/lib/free-shipping';
 import { formatRupiah } from '@/lib/utils';
 import { destroy as cartDestroy, update as cartUpdate } from '@/routes/cart';
 import { index as checkoutIndex } from '@/routes/checkout';
 import { index as productsIndex } from '@/routes/products';
+import type { SharedData } from '@/types';
 import type { CartSummary } from '@/types/cart';
 
 type Props = {
@@ -13,6 +16,11 @@ type Props = {
 };
 
 export default function CartIndex({ cart }: Props) {
+    // Set by "Beli Lagi", which lands here and may have skipped items.
+    const { flash, settings } = usePage<SharedData>().props;
+    const freeShipping = freeShippingRule(settings);
+    const toFreeShipping = freeShipping.threshold - cart.subtotal;
+
     const changeQuantity = (productId: number, quantity: number) => {
         router.put(
             cartUpdate(productId).url,
@@ -28,6 +36,11 @@ export default function CartIndex({ cart }: Props) {
     if (cart.items.length === 0) {
         return (
             <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6">
+                {flash.status && (
+                    <p className="mb-6 rounded-md border border-border bg-muted/50 p-3 text-sm text-foreground">
+                        {flash.status}
+                    </p>
+                )}
                 <p className="text-lg font-medium text-foreground">
                     Keranjang Anda kosong
                 </p>
@@ -50,6 +63,12 @@ export default function CartIndex({ cart }: Props) {
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                 Keranjang Belanja
             </h1>
+
+            {flash.status && (
+                <p className="mt-4 rounded-md border border-border bg-muted/50 p-3 text-sm text-foreground">
+                    {flash.status}
+                </p>
+            )}
 
             <div className="mt-6 divide-y divide-border rounded-xl border border-border">
                 {cart.items.map((item) => (
@@ -114,12 +133,43 @@ export default function CartIndex({ cart }: Props) {
                 ))}
             </div>
 
-            <div className="mt-6 flex flex-col items-end gap-2">
-                <p className="text-sm text-muted-foreground">
-                    Ongkos kirim akan dikonfirmasi oleh admin setelah pesanan dibuat.
+            {freeShipping.enabled && (
+                <p className="mt-6 rounded-md border border-emerald-600/30 bg-emerald-500/5 p-3 text-sm text-foreground">
+                    {toFreeShipping > 0 ? (
+                        <>
+                            Tambah{' '}
+                            <span className="font-semibold">
+                                {formatRupiah(toFreeShipping)}
+                            </span>{' '}
+                            lagi untuk <span className="font-semibold">gratis ongkir</span>
+                            {freeShipping.cap > 0
+                                ? ` (hingga ${formatRupiah(freeShipping.cap)})`
+                                : ''}
+                            .
+                        </>
+                    ) : (
+                        <>
+                            Belanjaan Anda dapat{' '}
+                            <span className="font-semibold">gratis ongkir</span>
+                            {freeShipping.cap > 0
+                                ? ` hingga ${formatRupiah(freeShipping.cap)}`
+                                : ''}
+                            . Potongannya muncul saat checkout.
+                        </>
+                    )}
                 </p>
+            )}
+
+            <div className="mt-6">
+                <ShippingEstimate />
+            </div>
+
+            <div className="mt-4 flex flex-col items-end gap-2">
                 <p className="text-lg font-semibold text-foreground">
-                    Total: {formatRupiah(cart.total)}
+                    Subtotal: {formatRupiah(cart.total)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                    Ongkir dihitung pasti di halaman checkout.
                 </p>
                 <Button asChild size="lg">
                     <Link href={checkoutIndex()}>Lanjut ke Checkout</Link>

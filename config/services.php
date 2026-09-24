@@ -103,4 +103,14 @@ return [
         'webhook_token' => env('BITESHIP_WEBHOOK_TOKEN'),
     ],
 
+    // Customer sign-in. Create an OAuth client (type "Web application") in
+    // Google Cloud Console and add GOOGLE_REDIRECT_URI to its authorised
+    // redirect URIs. Until both id and secret are set the storefront hides
+    // the Google button rather than offering one that fails.
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI', rtrim((string) env('APP_URL'), '/').'/auth/google/callback'),
+    ],
+
 ];

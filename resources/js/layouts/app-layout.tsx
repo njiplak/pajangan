@@ -9,8 +9,11 @@ import {
     Package,
     Settings,
     ShoppingCart,
+    Star,
+    Tags,
     Truck,
     Users,
+    UsersRound,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -242,6 +245,51 @@ export default function AppLayout({ children }: AppLayoutProps) {
                                         >
                                             <Package />
                                             <span>Produk</span>
+                                        </Link>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton
+                                        asChild
+                                        isActive={isMenuActive(
+                                            backoffice.producer.index.url(),
+                                        )}
+                                    >
+                                        <Link
+                                            href={backoffice.producer.index.url()}
+                                        >
+                                            <UsersRound />
+                                            <span>Produsen</span>
+                                        </Link>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton
+                                        asChild
+                                        isActive={isMenuActive(
+                                            backoffice.category.index.url(),
+                                        )}
+                                    >
+                                        <Link
+                                            href={backoffice.category.index.url()}
+                                        >
+                                            <Tags />
+                                            <span>Kategori</span>
+                                        </Link>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton
+                                        asChild
+                                        isActive={isMenuActive(
+                                            backoffice.review.index.url(),
+                                        )}
+                                    >
+                                        <Link
+                                            href={backoffice.review.index.url()}
+                                        >
+                                            <Star />
+                                            <span>Ulasan</span>
                                         </Link>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>

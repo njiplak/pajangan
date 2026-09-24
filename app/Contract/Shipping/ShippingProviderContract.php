@@ -33,7 +33,10 @@ interface ShippingProviderContract
      * code) so staff can resolve a human-typed address to the area id a
      * rate quote needs.
      *
-     * @return array<int, array{id: string, name: string, postal_code: ?string}>
+     * district/city/province are null when the provider does not supply
+     * them; callers must treat them as optional.
+     *
+     * @return array<int, array{id: string, name: string, postal_code: ?string, district: ?string, city: ?string, province: ?string}>
      */
     public function searchAreas(string $query): array;
 

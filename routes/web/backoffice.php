@@ -2,9 +2,12 @@
 
 use App\Http\Controllers\BackofficeController;
 use App\Http\Controllers\Banner\BannerController;
+use App\Http\Controllers\Category\CategoryController;
 use App\Http\Controllers\Order\OrderController;
 use App\Http\Controllers\Page\PageController;
+use App\Http\Controllers\Producer\ProducerController;
 use App\Http\Controllers\Product\ProductController;
+use App\Http\Controllers\Review\ReviewController;
 use Illuminate\Support\Facades\Route;
 
 Route::group(['middleware' => 'auth', 'prefix' => 'backoffice', 'as' => 'backoffice.'], function () {
@@ -19,6 +22,34 @@ Route::group(['middleware' => 'auth', 'prefix' => 'backoffice', 'as' => 'backoff
         Route::put('/{id}', [ProductController::class, 'update'])->name('update')->middleware('permission:product.update');
         Route::delete('/{id}', [ProductController::class, 'destroy'])->name('destroy')->middleware('permission:product.delete');
         Route::post('/destroy-bulk', [ProductController::class, 'destroy_bulk'])->name('destroy-bulk')->middleware('permission:product.delete');
+    });
+
+    // Producers are catalogue content, so they share the product permissions.
+    Route::group(['prefix' => 'producer', 'as' => 'producer.'], function () {
+        Route::get('/', [ProducerController::class, 'index'])->name('index')->middleware('permission:product.view');
+        Route::get('/fetch', [ProducerController::class, 'fetch'])->name('fetch')->middleware('permission:product.view');
+        Route::get('/create', [ProducerController::class, 'create'])->name('create')->middleware('permission:product.create');
+        Route::post('/', [ProducerController::class, 'store'])->name('store')->middleware('permission:product.create');
+        Route::get('/{id}', [ProducerController::class, 'show'])->name('show')->middleware('permission:product.update');
+        Route::put('/{id}', [ProducerController::class, 'update'])->name('update')->middleware('permission:product.update');
+        Route::delete('/{id}', [ProducerController::class, 'destroy'])->name('destroy')->middleware('permission:product.delete');
+        Route::post('/destroy-bulk', [ProducerController::class, 'destroy_bulk'])->name('destroy-bulk')->middleware('permission:product.delete');
+    });
+
+    Route::group(['prefix' => 'category', 'as' => 'category.'], function () {
+        Route::get('/', [CategoryController::class, 'index'])->name('index')->middleware('permission:product.view');
+        Route::get('/fetch', [CategoryController::class, 'fetch'])->name('fetch')->middleware('permission:product.view');
+        Route::get('/create', [CategoryController::class, 'create'])->name('create')->middleware('permission:product.create');
+        Route::post('/', [CategoryController::class, 'store'])->name('store')->middleware('permission:product.create');
+        Route::get('/{id}', [CategoryController::class, 'show'])->name('show')->middleware('permission:product.update');
+        Route::put('/{id}', [CategoryController::class, 'update'])->name('update')->middleware('permission:product.update');
+        Route::delete('/{id}', [CategoryController::class, 'destroy'])->name('destroy')->middleware('permission:product.delete');
+        Route::post('/destroy-bulk', [CategoryController::class, 'destroy_bulk'])->name('destroy-bulk')->middleware('permission:product.delete');
+    });
+
+    Route::group(['prefix' => 'review', 'as' => 'review.'], function () {
+        Route::get('/', [ReviewController::class, 'index'])->name('index')->middleware('permission:product.view');
+        Route::put('/{id}/visibility', [ReviewController::class, 'visibility'])->name('visibility')->middleware('permission:product.update');
     });
 
     Route::group(['prefix' => 'page', 'as' => 'page.'], function () {

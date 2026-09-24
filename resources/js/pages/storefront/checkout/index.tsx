@@ -1,27 +1,51 @@
-import { Head, useForm } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { useEffect, useRef, useState } from 'react';
 import AlertError from '@/components/alert-error';
 import InputError from '@/components/input-error';
+import {
+    AreaFilledInput,
+    locksFor,
+    NO_LOCKS,
+} from '@/components/storefront/area-filled-input';
+import type { AreaLocks } from '@/components/storefront/area-filled-input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import StorefrontLayout from '@/layouts/storefront-layout';
 import { FormResponse } from '@/lib/constant';
-import { formatRupiah, getCsrfToken } from '@/lib/utils';
+import { freeShippingRule } from '@/lib/free-shipping';
+import { cn, formatRupiah, getCsrfToken } from '@/lib/utils';
 import { store as checkoutStore, shippingAreas, shippingRates } from '@/routes/checkout';
+import type { SharedData } from '@/types';
+import { login as customerLogin } from '@/routes/customer';
 import type { CartSummary } from '@/types/cart';
+import type { SavedAddress } from '@/types/customer';
 import type { ShippingArea, ShippingRateOption } from '@/types/order';
 
 type Props = {
     cart: CartSummary;
+    /** Null for guests. */
+    profile: { name: string; email: string; phone: string | null } | null;
+    /** Default first; empty for guests. */
+    savedAddresses: SavedAddress[];
 };
 
-export default function CheckoutIndex({ cart }: Props) {
+export default function CheckoutIndex({
+    cart,
+    profile,
+    savedAddresses,
+}: Props) {
+    const { shippingDestination, googleLoginEnabled, settings } =
+        usePage<SharedData>().props;
+    const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
+        null,
+    );
     const { data, setData, post, processing, errors } = useForm({
-        customer_name: '',
-        customer_email: '',
-        customer_phone: '',
+        customer_name: profile?.name ?? '',
+        customer_email: profile?.email ?? '',
+        customer_phone: profile?.phone ?? '',
         shipping_address: '',
         shipping_city: '',
         shipping_province: '',
@@ -31,6 +55,8 @@ export default function CheckoutIndex({ cart }: Props) {
         courier_code: '',
         courier_service_code: '',
         notes: '',
+        save_address: false,
+        address_label: '',
     });
 
     const [areaQuery, setAreaQuery] = useState('');
@@ -40,6 +66,9 @@ export default function CheckoutIndex({ cart }: Props) {
     const [selectedRate, setSelectedRate] = useState<ShippingRateOption | null>(null);
     const [loadingRates, setLoadingRates] = useState(false);
     const [ratesError, setRatesError] = useState<string | null>(null);
+    // City, province and postal code are locked once the courier's area
+    // supplied them, so the address cannot disagree with where it ships.
+    const [locks, setLocks] = useState<AreaLocks>(NO_LOCKS);
 
     useEffect(() => {
         if (selectedArea && areaQuery === selectedArea.name) return;
@@ -67,9 +96,13 @@ export default function CheckoutIndex({ cart }: Props) {
             ...current,
             destination_area_id: area.id,
             destination_area_name: area.name,
+            shipping_city: area.city ?? current.shipping_city,
+            shipping_province: area.province ?? current.shipping_province,
+            shipping_postal_code: area.postal_code ?? current.shipping_postal_code,
             courier_code: '',
             courier_service_code: '',
         }));
+        setLocks(locksFor(area));
 
         setLoadingRates(true);
         setRatesError(null);
@@ -100,6 +133,64 @@ export default function CheckoutIndex({ cart }: Props) {
         }
     };
 
+    const applyAddress = (address: SavedAddress) => {
+        setSelectedAddressId(address.id);
+        setData((current) => ({
+            ...current,
+            customer_name: address.recipient_name,
+            customer_phone: address.phone,
+            shipping_address: address.address,
+            shipping_city: address.city,
+            shipping_province: address.province,
+            shipping_postal_code: address.postal_code ?? '',
+            save_address: false,
+        }));
+        onSelectArea({
+            id: address.destination_area_id,
+            name: address.destination_area_name,
+            postal_code: address.postal_code,
+            city: address.city,
+            province: address.province,
+        });
+    };
+
+    // A saved default address wins: it is a full address, where the area
+    // picked on the product or cart page is only an area. Either way the
+    // customer is not made to search for their area a second time.
+    const prefilled = useRef(false);
+
+    useEffect(() => {
+        if (prefilled.current) {
+            return;
+        }
+
+        const preferred =
+            savedAddresses.find((address) => address.is_default) ??
+            savedAddresses[0];
+
+        if (preferred) {
+            prefilled.current = true;
+            applyAddress(preferred);
+
+            return;
+        }
+
+        if (!shippingDestination) {
+            return;
+        }
+
+        prefilled.current = true;
+        onSelectArea({
+            id: shippingDestination.id,
+            name: shippingDestination.name,
+            postal_code: shippingDestination.postal_code,
+            city: shippingDestination.city,
+            province: shippingDestination.province,
+        });
+        // onSelectArea and applyAddress are stable for this one-shot prefill.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [shippingDestination, savedAddresses]);
+
     const onSelectRate = (rate: ShippingRateOption) => {
         setSelectedRate(rate);
         setData((current) => ({
@@ -110,6 +201,10 @@ export default function CheckoutIndex({ cart }: Props) {
     };
 
     const shippingCost = selectedRate?.price ?? 0;
+    const shippingDiscount = freeShippingRule(settings).discountFor(
+        cart.subtotal,
+        shippingCost,
+    );
     const canSubmit = Boolean(selectedArea && selectedRate) && !processing;
 
     const onSubmit = (e: React.FormEvent) => {
@@ -133,6 +228,75 @@ export default function CheckoutIndex({ cart }: Props) {
 
                 {cartError && (
                     <AlertError errors={[cartError]} title="Keranjang bermasalah" />
+                )}
+
+                {!profile && googleLoginEnabled && (
+                    <p className="text-sm text-muted-foreground">
+                        Punya akun?{' '}
+                        <Link
+                            href={customerLogin()}
+                            className="font-medium text-foreground underline underline-offset-4"
+                        >
+                            Masuk
+                        </Link>{' '}
+                        untuk memakai alamat tersimpan.
+                    </p>
+                )}
+
+                {savedAddresses.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                        <Label>Kirim ke</Label>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                            {savedAddresses.map((address) => (
+                                <button
+                                    key={address.id}
+                                    type="button"
+                                    onClick={() => applyAddress(address)}
+                                    className={cn(
+                                        'rounded-lg border p-3 text-left text-sm transition-colors',
+                                        selectedAddressId === address.id
+                                            ? 'border-primary bg-primary/5'
+                                            : 'border-border hover:bg-accent/50',
+                                    )}
+                                >
+                                    <span className="font-medium text-foreground">
+                                        {address.label || 'Alamat'}
+                                        {address.is_default ? ' · Utama' : ''}
+                                    </span>
+                                    <span className="mt-1 block text-muted-foreground">
+                                        {address.recipient_name} · {address.phone}
+                                    </span>
+                                    <span className="mt-0.5 block truncate text-muted-foreground">
+                                        {address.address}, {address.city}
+                                    </span>
+                                </button>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSelectedAddressId(null);
+                                    setLocks(NO_LOCKS);
+                                    setData((current) => ({
+                                        ...current,
+                                        shipping_address: '',
+                                        shipping_city: '',
+                                        shipping_province: '',
+                                        shipping_postal_code: '',
+                                    }));
+                                }}
+                                className={cn(
+                                    'rounded-lg border border-dashed p-3 text-left text-sm transition-colors',
+                                    selectedAddressId === null
+                                        ? 'border-primary bg-primary/5'
+                                        : 'border-border hover:bg-accent/50',
+                                )}
+                            >
+                                <span className="font-medium text-foreground">
+                                    + Alamat baru
+                                </span>
+                            </button>
+                        </div>
+                    </div>
                 )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -161,46 +325,14 @@ export default function CheckoutIndex({ cart }: Props) {
                         />
                         <InputError message={errors.customer_phone} />
                     </div>
-                    <div className="flex flex-col gap-1.5 sm:col-span-2">
-                        <Label>Alamat Pengiriman</Label>
-                        <Textarea
-                            rows={3}
-                            value={data.shipping_address}
-                            onChange={(e) => setData('shipping_address', e.target.value)}
-                        />
-                        <InputError message={errors.shipping_address} />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                        <Label>Kota/Kabupaten</Label>
-                        <Input
-                            value={data.shipping_city}
-                            onChange={(e) => setData('shipping_city', e.target.value)}
-                        />
-                        <InputError message={errors.shipping_city} />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                        <Label>Provinsi</Label>
-                        <Input
-                            value={data.shipping_province}
-                            onChange={(e) => setData('shipping_province', e.target.value)}
-                        />
-                        <InputError message={errors.shipping_province} />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                        <Label>Kode Pos (opsional)</Label>
-                        <Input
-                            value={data.shipping_postal_code}
-                            onChange={(e) => setData('shipping_postal_code', e.target.value)}
-                        />
-                        <InputError message={errors.shipping_postal_code} />
-                    </div>
                     <div className="relative flex flex-col gap-1.5 sm:col-span-2">
-                        <Label>Tujuan Pengiriman (kota/kecamatan/kode pos)</Label>
+                        <Label>Kecamatan / Kota Tujuan</Label>
                         <Input
                             value={areaQuery}
                             onChange={(e) => {
                                 setAreaQuery(e.target.value);
                                 setSelectedArea(null);
+                                setLocks(NO_LOCKS);
                                 setRates([]);
                                 setSelectedRate(null);
                                 setData((current) => ({
@@ -229,7 +361,48 @@ export default function CheckoutIndex({ cart }: Props) {
                                 ))}
                             </ul>
                         )}
+                        <p className="text-xs text-muted-foreground">
+                            Kota, provinsi, dan kode pos terisi otomatis dari
+                            pilihan ini.
+                        </p>
                         <InputError message={errors.destination_area_id} />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <Label>Kota/Kabupaten</Label>
+                        <AreaFilledInput
+                            value={data.shipping_city}
+                            locked={locks.city}
+                            onChange={(value) => setData('shipping_city', value)}
+                        />
+                        <InputError message={errors.shipping_city} />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <Label>Provinsi</Label>
+                        <AreaFilledInput
+                            value={data.shipping_province}
+                            locked={locks.province}
+                            onChange={(value) => setData('shipping_province', value)}
+                        />
+                        <InputError message={errors.shipping_province} />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <Label>Kode Pos (opsional)</Label>
+                        <AreaFilledInput
+                            value={data.shipping_postal_code}
+                            locked={locks.postal_code}
+                            onChange={(value) => setData('shipping_postal_code', value)}
+                        />
+                        <InputError message={errors.shipping_postal_code} />
+                    </div>
+                    <div className="flex flex-col gap-1.5 sm:col-span-2">
+                        <Label>Alamat Pengiriman</Label>
+                        <Textarea
+                            rows={3}
+                            value={data.shipping_address}
+                            onChange={(e) => setData('shipping_address', e.target.value)}
+                            placeholder="Nama jalan, nomor rumah, RT/RW, patokan"
+                        />
+                        <InputError message={errors.shipping_address} />
                     </div>
                     <div className="flex flex-col gap-1.5 sm:col-span-2">
                         <Label>Catatan (opsional)</Label>
@@ -241,6 +414,29 @@ export default function CheckoutIndex({ cart }: Props) {
                         <InputError message={errors.notes} />
                     </div>
                 </div>
+
+                {profile && selectedAddressId === null && (
+                    <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+                        <label className="flex items-center gap-2 text-sm">
+                            <Checkbox
+                                checked={data.save_address}
+                                onCheckedChange={(checked) =>
+                                    setData('save_address', checked === true)
+                                }
+                            />
+                            Simpan alamat ini ke akun saya
+                        </label>
+                        {data.save_address && (
+                            <Input
+                                value={data.address_label}
+                                onChange={(e) =>
+                                    setData('address_label', e.target.value)
+                                }
+                                placeholder="Label, mis. Rumah atau Kantor (opsional)"
+                            />
+                        )}
+                    </div>
+                )}
 
                 {selectedArea && (
                     <div className="flex flex-col gap-2">
@@ -321,9 +517,17 @@ export default function CheckoutIndex({ cart }: Props) {
                             {selectedRate ? formatRupiah(shippingCost) : 'Pilih kurir dahulu'}
                         </span>
                     </div>
+                    {shippingDiscount > 0 && (
+                        <div className="flex justify-between text-emerald-700 dark:text-emerald-400">
+                            <span>Gratis ongkir</span>
+                            <span>−{formatRupiah(shippingDiscount)}</span>
+                        </div>
+                    )}
                     <div className="flex justify-between font-semibold text-foreground">
                         <span>Total</span>
-                        <span>{formatRupiah(cart.subtotal + shippingCost)}</span>
+                        <span>
+                            {formatRupiah(cart.subtotal + shippingCost - shippingDiscount)}
+                        </span>
                     </div>
                 </div>
             </div>

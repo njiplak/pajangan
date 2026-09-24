@@ -28,6 +28,7 @@ class Order extends Model
     ];
 
     protected $fillable = [
+        'customer_id',
         'order_number',
         'customer_name',
         'customer_email',
@@ -37,6 +38,7 @@ class Order extends Model
         'shipping_province',
         'shipping_postal_code',
         'shipping_cost',
+        'shipping_discount',
         'shipping_area_id',
         'shipping_area_name',
         'courier_code',
@@ -46,6 +48,8 @@ class Order extends Model
         'tracking_number',
         'biteship_order_id',
         'notes',
+        'stock_draw',
+        'stock_released_at',
         'status',
         'subtotal',
         'total',
@@ -65,8 +69,11 @@ class Order extends Model
             'subtotal' => 'integer',
             'total' => 'integer',
             'shipping_cost' => 'integer',
+            'shipping_discount' => 'integer',
             'admin_fee' => 'integer',
             'paid_at' => 'datetime',
+            'stock_draw' => 'array',
+            'stock_released_at' => 'datetime',
             'payment_payload' => 'array',
         ];
     }
@@ -74,5 +81,10 @@ class Order extends Model
     public function items()
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
     }
 }

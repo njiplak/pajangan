@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Shipping;
 
+use App\Contract\Notification\OrderNotifierContract;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Service\Shipping\ShippingProviderManager;
@@ -36,7 +37,10 @@ class ShippingWebhookController extends Controller
         'delivered' => Order::STATUS_COMPLETED,
     ];
 
-    public function __construct(private readonly ShippingProviderManager $shipping) {}
+    public function __construct(
+        private readonly ShippingProviderManager $shipping,
+        private readonly OrderNotifierContract $notifier,
+    ) {}
 
     /**
      * Biteship does not sign its webhook payloads, so this endpoint trusts
@@ -78,7 +82,7 @@ class ShippingWebhookController extends Controller
             return response()->json(['message' => 'ok']);
         }
 
-        DB::transaction(function () use ($order, $shipment) {
+        $justDelivered = DB::transaction(function () use ($order, $shipment) {
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->first();
 
             $update = [
@@ -95,7 +99,16 @@ class ShippingWebhookController extends Controller
             }
 
             $locked->update($update);
+
+            // Only the delivery that actually moves the order to completed
+            // mails the customer; later repeats of the same status are a
+            // no-op above and return nothing here.
+            return ($update['status'] ?? null) === Order::STATUS_COMPLETED ? $locked : null;
         });
+
+        if ($justDelivered) {
+            $this->notifier->orderDelivered($justDelivered);
+        }
 
         return response()->json(['message' => 'ok']);
     }

@@ -142,6 +142,13 @@ class BaseService implements BaseContract
             $model = $this->model->create($payloads);
 
             foreach ($this->fileKeys as $fileKey) {
+                // Every file key is optional in validation, but Spatie throws
+                // instead of no-opping when the request carries no file under
+                // it. Skipping keeps a fileless save from failing the record.
+                if (! request()->hasFile($fileKey)) {
+                    continue;
+                }
+
                 $model->addMultipleMediaFromRequest([$fileKey])
                     ->each(function ($image) use ($fileKey) {
                         $image->toMediaCollection($fileKey);
@@ -184,11 +191,9 @@ class BaseService implements BaseContract
                 $payloads[$this->guardForeignKey] = $this->userID();
             }
 
+            // File keys are not model columns; strip them before the update.
             foreach ($this->fileKeys as $fileKey) {
-                if (isset($payloads[$fileKey])) {
-                    $media[$fileKey] = $payloads[$fileKey];
-                    unset($payloads[$fileKey]);
-                }
+                unset($payloads[$fileKey]);
             }
 
             DB::beginTransaction();
@@ -196,6 +201,12 @@ class BaseService implements BaseContract
             $model->update($payloads);
 
             foreach ($this->fileKeys as $fileKey) {
+                // Same as create(): no file under this key means the user is
+                // editing other fields and leaving existing media alone.
+                if (! request()->hasFile($fileKey)) {
+                    continue;
+                }
+
                 $model->addMultipleMediaFromRequest([$fileKey])
                     ->each(function ($image) use ($fileKey) {
                         $image->toMediaCollection($fileKey);

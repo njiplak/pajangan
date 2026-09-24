@@ -51,6 +51,11 @@ class PageController extends Controller
     {
         $page = $this->service->find($id);
 
+        // find() reports a missing record by returning the exception.
+        if ($page instanceof \Exception) {
+            abort(404);
+        }
+
         return Inertia::render('page/form', [
             'page' => $page,
         ]);

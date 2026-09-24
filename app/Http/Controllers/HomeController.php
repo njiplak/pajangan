@@ -22,6 +22,8 @@ class HomeController extends Controller
             ]);
 
         $featuredProducts = Product::query()
+            ->sellable()
+            ->withRating()
             ->where('is_active', true)
             ->latest()
             ->take(8)
@@ -33,6 +35,10 @@ class HomeController extends Controller
                 'price' => $product->price,
                 'discount_percent' => $product->discount_percent,
                 'effective_price' => $product->effectivePrice(),
+                'stock' => $product->availableStock(),
+                'is_bundle' => $product->is_bundle,
+                'rating_avg' => $product->rating_avg !== null ? round((float) $product->rating_avg, 1) : null,
+                'rating_count' => (int) ($product->rating_count ?? 0),
                 'producer_name' => $product->producer_name,
                 'producer_region' => $product->producer_region,
                 'image' => $product->getFirstMediaUrl('images') ?: null,

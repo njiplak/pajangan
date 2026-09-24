@@ -1,10 +1,15 @@
 import { Link, usePage } from '@inertiajs/react';
-import { ShoppingBag } from 'lucide-react';
+import { MessageCircle, ShoppingBag, UserRound } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { about, home } from '@/routes';
+import { index as accountIndex } from '@/routes/account';
+import { index as producersIndex } from '@/routes/producers';
 import { index as cartIndex } from '@/routes/cart';
+import { login as customerLogin } from '@/routes/customer';
 import { index as productsIndex } from '@/routes/products';
+import { show as trackOrder } from '@/routes/track';
+import { whatsappLink } from '@/lib/utils';
 import type { SharedData } from '@/types';
 
 type StorefrontLayoutProps = {
@@ -12,7 +17,8 @@ type StorefrontLayoutProps = {
 };
 
 export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
-    const { cart, settings } = usePage<SharedData>().props;
+    const { cart, settings, customer, googleLoginEnabled } =
+        usePage<SharedData>().props;
     const isDisplayMode = settings.storefront_mode === 'display';
     const title = settings.storefront_title ?? 'UMKM Papua.id';
     const subtitle = settings.storefront_subtitle ?? 'Perjuangan Ekonomi Bermartabat';
@@ -48,12 +54,42 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
                         <Link href={productsIndex()} className="transition-colors hover:text-foreground">
                             Produk
                         </Link>
+                        <Link href={producersIndex()} className="transition-colors hover:text-foreground">
+                            Produsen
+                        </Link>
                         <Link href={about()} className="transition-colors hover:text-foreground">
                             Tentang Kami
                         </Link>
                     </nav>
 
                     <div className="flex items-center gap-3">
+                        {customer ? (
+                            <Link
+                                href={accountIndex()}
+                                className="flex size-9 items-center justify-center overflow-hidden rounded-full border border-border text-foreground transition-colors hover:bg-accent"
+                                aria-label="Akun saya"
+                            >
+                                {customer.avatar_url ? (
+                                    <img
+                                        src={customer.avatar_url}
+                                        alt=""
+                                        referrerPolicy="no-referrer"
+                                        className="size-full object-cover"
+                                    />
+                                ) : (
+                                    <UserRound className="size-4" />
+                                )}
+                            </Link>
+                        ) : (
+                            googleLoginEnabled && (
+                                <Link
+                                    href={customerLogin()}
+                                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                                >
+                                    Masuk
+                                </Link>
+                            )
+                        )}
                         {!isDisplayMode && (
                             <Link
                                 href={cartIndex()}
@@ -77,6 +113,9 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
                     <Link href={productsIndex()} className="whitespace-nowrap">
                         Produk
                     </Link>
+                        <Link href={producersIndex()} className="whitespace-nowrap">
+                            Produsen
+                        </Link>
                     <Link href={about()} className="whitespace-nowrap">
                         Tentang Kami
                     </Link>
@@ -94,7 +133,7 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
                                 {footerDescription}
                             </p>
                         </div>
-                        <div className="flex gap-10 text-sm">
+                        <div className="flex flex-wrap gap-x-10 gap-y-6 text-sm">
                             <div className="flex flex-col gap-2">
                                 <p className="font-medium text-foreground">Jelajahi</p>
                                 <Link href={home()} className="text-muted-foreground hover:text-foreground">
@@ -103,10 +142,47 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
                                 <Link href={productsIndex()} className="text-muted-foreground hover:text-foreground">
                                     Produk
                                 </Link>
+                        <Link href={producersIndex()} className="text-muted-foreground hover:text-foreground">
+                            Produsen
+                        </Link>
                                 <Link href={about()} className="text-muted-foreground hover:text-foreground">
                                     Tentang Kami
                                 </Link>
                             </div>
+                            <div className="flex flex-col gap-2">
+                                <p className="font-medium text-foreground">Pesanan</p>
+                                <Link href={trackOrder()} className="text-muted-foreground hover:text-foreground">
+                                    Lacak Pesanan
+                                </Link>
+                                {customer ? (
+                                    <Link href={accountIndex()} className="text-muted-foreground hover:text-foreground">
+                                        Akun Saya
+                                    </Link>
+                                ) : (
+                                    googleLoginEnabled && (
+                                        <Link href={customerLogin()} className="text-muted-foreground hover:text-foreground">
+                                            Masuk
+                                        </Link>
+                                    )
+                                )}
+                            </div>
+                            {settings.storefront_whatsapp_number && (
+                                <div className="flex flex-col gap-2">
+                                    <p className="font-medium text-foreground">Bantuan</p>
+                                    <a
+                                        href={whatsappLink(
+                                            settings.storefront_whatsapp_number,
+                                            'Halo, saya ingin bertanya.',
+                                        )}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+                                    >
+                                        <MessageCircle className="size-4" />
+                                        WhatsApp
+                                    </a>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <p className="mt-8 text-xs text-muted-foreground">
