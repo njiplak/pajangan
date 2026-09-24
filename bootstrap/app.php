@@ -37,7 +37,9 @@ return Application::configure(basePath: dirname(__DIR__))
         }
     )
     ->withSchedule(function (Schedule $schedule) {
-        //
+        // Returns stock from orders that were never paid for. Needs
+        // `php artisan schedule:run` on a cron, or nothing here runs.
+        $schedule->command('orders:expire-unpaid')->hourly()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);

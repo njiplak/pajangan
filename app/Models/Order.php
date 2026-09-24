@@ -46,6 +46,8 @@ class Order extends Model
         'tracking_number',
         'biteship_order_id',
         'notes',
+        'stock_draw',
+        'stock_released_at',
         'status',
         'subtotal',
         'total',
@@ -67,6 +69,8 @@ class Order extends Model
             'shipping_cost' => 'integer',
             'admin_fee' => 'integer',
             'paid_at' => 'datetime',
+            'stock_draw' => 'array',
+            'stock_released_at' => 'datetime',
             'payment_payload' => 'array',
         ];
     }

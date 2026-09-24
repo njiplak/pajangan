@@ -34,4 +34,15 @@ interface OrderNotifierContract
      * A shipment exists at the courier and, usually, has a tracking number.
      */
     public function orderShipped(Order $order): void;
+
+    /**
+     * The courier reports the parcel as delivered.
+     */
+    public function orderDelivered(Order $order): void;
+
+    /**
+     * The order will not go ahead — typically because payment never
+     * arrived within the hold window and the stock has gone back.
+     */
+    public function orderCancelled(Order $order): void;
 }

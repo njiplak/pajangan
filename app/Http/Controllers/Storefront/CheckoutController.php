@@ -18,7 +18,6 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
-use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -54,7 +53,13 @@ class CheckoutController extends Controller
             ]);
         }
 
-        $result = DB::transaction(function () use ($rawCart, $request) {
+        // Priced before a single row is written. An order whose shipping
+        // could not be quoted must not exist at all: the old flow created
+        // it first and, when the quote failed, silently left `total` at
+        // the bare subtotal and charged the customer no ongkir at all.
+        $quoted = $this->quoteSelectedRate($request);
+
+        $result = DB::transaction(function () use ($rawCart, $request, $quoted) {
             $cartIds = array_keys($rawCart);
 
             // A bundle sells its components' stock, so the rows to lock are
@@ -157,6 +162,15 @@ class CheckoutController extends Controller
                 }
             }
 
+            // The quote above priced a parcel of a particular weight. If the
+            // authoritative weight differs, that quote is for a different
+            // shipment and must not be charged.
+            if ($weightGrams !== $quoted['weight_gram']) {
+                throw ValidationException::withMessages([
+                    'cart' => 'Isi keranjang Anda baru saja berubah. Silakan periksa kembali keranjang Anda.',
+                ]);
+            }
+
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
                 'customer_name' => $request->validated('customer_name'),
@@ -167,9 +181,18 @@ class CheckoutController extends Controller
                 'shipping_province' => $request->validated('shipping_province'),
                 'shipping_postal_code' => $request->validated('shipping_postal_code'),
                 'notes' => $request->validated('notes'),
+                // Recorded now so a later release returns exactly this,
+                // whatever happens to the bundles in the meantime.
+                'stock_draw' => $stockDraw,
                 'status' => Order::STATUS_PENDING,
                 'subtotal' => $subtotal,
-                'total' => $subtotal,
+                'shipping_cost' => $quoted['price'],
+                'shipping_area_id' => $request->validated('destination_area_id'),
+                'shipping_area_name' => $request->validated('destination_area_name'),
+                'courier_code' => $quoted['courier_code'],
+                'courier_name' => $quoted['courier_name'],
+                'courier_service' => $quoted['courier_service_code'],
+                'total' => $subtotal + $quoted['price'],
             ]);
 
             foreach ($lineItems as $item) {
@@ -193,40 +216,6 @@ class CheckoutController extends Controller
         $order = $result['order'];
 
         $this->cart->clear();
-
-        try {
-            $rates = $this->shipping->resolve('biteship')->quoteRates([
-                'destination_area_id' => $request->validated('destination_area_id'),
-                'weight_gram' => $result['weight_gram'],
-                'item_value' => $order->subtotal,
-            ]);
-
-            $match = collect($rates)->first(
-                fn (array $rate) => $rate['courier_code'] === $request->validated('courier_code')
-                    && $rate['courier_service_code'] === $request->validated('courier_service_code')
-            );
-
-            if (! $match) {
-                throw new RuntimeException('Selected courier/service is no longer available in the fresh rate quote.');
-            }
-
-            $order->update([
-                'shipping_cost' => $match['price'],
-                'shipping_area_id' => $request->validated('destination_area_id'),
-                'shipping_area_name' => $request->validated('destination_area_name'),
-                'courier_code' => $match['courier_code'],
-                'courier_name' => $match['courier_name'],
-                'courier_service' => $match['courier_service_code'],
-                'total' => $order->subtotal + $match['price'],
-            ]);
-        } catch (Throwable $e) {
-            // Same rationale as the payment-initiation catch below: the
-            // order (and its stock decrement) already exists and must not
-            // be lost just because the shipping rate could no longer be
-            // verified. Staff can resolve shipping manually from the
-            // backoffice, same as any order that has no shipment yet.
-            Log::error("Shipping rate verification failed for order [{$order->order_number}]: {$e->getMessage()}");
-        }
 
         $confirmationUrl = URL::signedRoute('order.show', ['order' => $order->order_number]);
 
@@ -262,6 +251,51 @@ class CheckoutController extends Controller
         }
 
         return redirect()->to($confirmationUrl);
+    }
+
+    /**
+     * Re-quotes the courier the customer picked and returns that rate, or
+     * fails the checkout. Refusing to sell is the right outcome here: we
+     * cannot charge for a shipment nobody will price.
+     *
+     * @return array{courier_code: string, courier_name: string, courier_service_code: string, price: int, weight_gram: int}
+     */
+    private function quoteSelectedRate(CheckoutRequest $request): array
+    {
+        $weightGram = $this->cart->totalWeightGrams();
+
+        try {
+            $rates = $this->shipping->resolve('biteship')->quoteRates([
+                'destination_area_id' => $request->validated('destination_area_id'),
+                'weight_gram' => $weightGram,
+                'item_value' => $this->cart->summary()['subtotal'],
+            ]);
+        } catch (Throwable $e) {
+            Log::error("Shipping rate quote failed during checkout: {$e->getMessage()}");
+
+            throw ValidationException::withMessages([
+                'cart' => 'Ongkos kirim sedang tidak bisa dihitung. Silakan coba lagi sesaat lagi.',
+            ]);
+        }
+
+        $match = collect($rates)->first(
+            fn (array $rate) => $rate['courier_code'] === $request->validated('courier_code')
+                && $rate['courier_service_code'] === $request->validated('courier_service_code')
+        );
+
+        if (! $match) {
+            throw ValidationException::withMessages([
+                'courier_code' => 'Layanan kurir yang Anda pilih sudah tidak tersedia. Silakan pilih ulang.',
+            ]);
+        }
+
+        return [
+            'courier_code' => $match['courier_code'],
+            'courier_name' => $match['courier_name'],
+            'courier_service_code' => $match['courier_service_code'],
+            'price' => (int) $match['price'],
+            'weight_gram' => $weightGram,
+        ];
     }
 
     private function generateOrderNumber(): string

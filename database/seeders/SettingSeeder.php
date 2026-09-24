@@ -62,6 +62,12 @@ class SettingSeeder extends Seeder
                 'key' => 'low_stock_threshold',
                 'value' => '10',
             ],
+            [
+                // Hours an unpaid order holds its stock before
+                // orders:expire-unpaid cancels it and hands the stock back.
+                'key' => 'order_unpaid_hold_hours',
+                'value' => '24',
+            ],
         ];
 
         foreach ($settings as $setting) {

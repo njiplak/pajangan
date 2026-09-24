@@ -3,6 +3,8 @@
 namespace App\Service\Notification;
 
 use App\Contract\Notification\OrderNotifierContract;
+use App\Mail\OrderCancelledMail;
+use App\Mail\OrderDeliveredMail;
 use App\Mail\OrderPlacedMail;
 use App\Mail\OrderShippedMail;
 use App\Mail\PaymentReceivedMail;
@@ -35,6 +37,16 @@ class MailOrderNotifier implements OrderNotifierContract
     public function orderShipped(Order $order): void
     {
         $this->deliver($order, new OrderShippedMail($order->loadMissing('items')), 'order shipped');
+    }
+
+    public function orderDelivered(Order $order): void
+    {
+        $this->deliver($order, new OrderDeliveredMail($order->loadMissing('items')), 'order delivered');
+    }
+
+    public function orderCancelled(Order $order): void
+    {
+        $this->deliver($order, new OrderCancelledMail($order->loadMissing('items')), 'order cancelled');
     }
 
     private function deliver(Order $order, Mailable $mailable, string $label): void

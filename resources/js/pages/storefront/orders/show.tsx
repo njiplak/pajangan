@@ -1,12 +1,15 @@
-import { Head } from '@inertiajs/react';
-import { CheckCircle2 } from 'lucide-react';
+import { Head, router } from '@inertiajs/react';
+import { CheckCircle2, CreditCard } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import StorefrontLayout from '@/layouts/storefront-layout';
 import { formatRupiah } from '@/lib/utils';
 import type { Order } from '@/types/order';
 
 type Props = {
     order: Order;
+    /** Present only while the order can still be paid for. */
+    payUrl: string | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -18,7 +21,7 @@ const STATUS_LABEL: Record<string, string> = {
     cancelled: 'Dibatalkan',
 };
 
-export default function OrderShow({ order }: Props) {
+export default function OrderShow({ order, payUrl }: Props) {
     return (
         <div className="mx-auto max-w-2xl px-4 py-14 sm:px-6">
             <Head title="Status Pesanan">
@@ -41,6 +44,17 @@ export default function OrderShow({ order }: Props) {
                 <Badge variant="secondary" className="mt-3">
                     {STATUS_LABEL[order.status] ?? order.status}
                 </Badge>
+
+                {payUrl && (
+                    <Button
+                        size="lg"
+                        className="mt-6 gap-2"
+                        onClick={() => router.post(payUrl)}
+                    >
+                        <CreditCard className="size-4" />
+                        Bayar Sekarang
+                    </Button>
+                )}
             </div>
 
             <div className="mt-8 rounded-xl border border-border p-5">

@@ -300,7 +300,7 @@ test('checkout falls back to the confirmation page without losing the order when
     expect($product->fresh()->stock)->toBe(4);
 });
 
-test('checkout keeps the order without a shipping cost when the selected courier is no longer in the fresh rate quote', function () {
+test('checkout is refused when the selected courier is no longer in the fresh rate quote', function () {
     config([
         'services.biteship.api_key' => 'biteship_test.abc',
         'services.biteship.base_url' => 'https://api.biteship.com',
@@ -338,18 +338,42 @@ test('checkout keeps the order without a shipping cost when the selected courier
 
     $response = $this->post(route('checkout.store'), checkoutPayload());
 
-    $order = Order::first();
-    expect($order)->not->toBeNull();
-    expect($order->status)->toBe(Order::STATUS_PENDING);
-    expect($order->shipping_cost)->toBeNull();
-    expect($order->total)->toBe($order->subtotal);
+    // An order we cannot price the shipping for must not exist: charging
+    // the customer a shipping-free total is worse than asking them to
+    // pick another courier.
+    $response->assertSessionHasErrors('courier_code');
+    expect(Order::count())->toBe(0);
+    expect($product->fresh()->stock)->toBe(5);
 
-    $response->assertRedirect();
-    expect($response->headers->get('Location'))->toContain($order->order_number);
+    // The cart survives so the customer can simply choose again.
+    expect(session('cart'))->toBe([$product->id => 1]);
+});
 
-    // Stock must still be decremented — the order itself is real, only
-    // shipping verification failed.
-    expect($product->fresh()->stock)->toBe(4);
+test('checkout is refused when the courier cannot be reached at all', function () {
+    config([
+        'services.biteship.api_key' => 'biteship_test.abc',
+        'services.biteship.base_url' => 'https://api.biteship.com',
+        'services.biteship.origin_area_id' => 'IDNP6IDNC148IDND854IDZ10730',
+        'services.biteship.couriers' => 'jne',
+    ]);
+
+    Http::fake([
+        'api.biteship.com/v1/rates/couriers' => Http::response(['success' => false, 'error' => 'boom'], 500),
+    ]);
+
+    $product = Product::create([
+        'name' => 'Noken Test',
+        'price' => 150000,
+        'stock' => 5,
+        'is_active' => true,
+    ]);
+
+    $this->post(route('cart.store'), ['product_id' => $product->id, 'quantity' => 1]);
+
+    $this->post(route('checkout.store'), checkoutPayload())->assertSessionHasErrors('cart');
+
+    expect(Order::count())->toBe(0);
+    expect($product->fresh()->stock)->toBe(5);
 });
 
 test('order confirmation page requires a valid signature', function () {

@@ -29,4 +29,8 @@ Route::get('/pesanan/{order:order_number}', [OrderLookupController::class, 'show
     ->name('order.show')
     ->middleware('signed');
 
+Route::post('/pesanan/{order:order_number}/bayar', [OrderLookupController::class, 'pay'])
+    ->name('order.pay')
+    ->middleware(['signed', 'checkout-mode']);
+
 Route::get('/tentang-kami', [PageController::class, 'about'])->name('about');
