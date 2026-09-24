@@ -4,6 +4,7 @@ use App\Http\Controllers\BackofficeController;
 use App\Http\Controllers\Banner\BannerController;
 use App\Http\Controllers\Order\OrderController;
 use App\Http\Controllers\Page\PageController;
+use App\Http\Controllers\Producer\ProducerController;
 use App\Http\Controllers\Product\ProductController;
 use App\Http\Controllers\Review\ReviewController;
 use Illuminate\Support\Facades\Route;
@@ -20,6 +21,18 @@ Route::group(['middleware' => 'auth', 'prefix' => 'backoffice', 'as' => 'backoff
         Route::put('/{id}', [ProductController::class, 'update'])->name('update')->middleware('permission:product.update');
         Route::delete('/{id}', [ProductController::class, 'destroy'])->name('destroy')->middleware('permission:product.delete');
         Route::post('/destroy-bulk', [ProductController::class, 'destroy_bulk'])->name('destroy-bulk')->middleware('permission:product.delete');
+    });
+
+    // Producers are catalogue content, so they share the product permissions.
+    Route::group(['prefix' => 'producer', 'as' => 'producer.'], function () {
+        Route::get('/', [ProducerController::class, 'index'])->name('index')->middleware('permission:product.view');
+        Route::get('/fetch', [ProducerController::class, 'fetch'])->name('fetch')->middleware('permission:product.view');
+        Route::get('/create', [ProducerController::class, 'create'])->name('create')->middleware('permission:product.create');
+        Route::post('/', [ProducerController::class, 'store'])->name('store')->middleware('permission:product.create');
+        Route::get('/{id}', [ProducerController::class, 'show'])->name('show')->middleware('permission:product.update');
+        Route::put('/{id}', [ProducerController::class, 'update'])->name('update')->middleware('permission:product.update');
+        Route::delete('/{id}', [ProducerController::class, 'destroy'])->name('destroy')->middleware('permission:product.delete');
+        Route::post('/destroy-bulk', [ProducerController::class, 'destroy_bulk'])->name('destroy-bulk')->middleware('permission:product.delete');
     });
 
     Route::group(['prefix' => 'review', 'as' => 'review.'], function () {

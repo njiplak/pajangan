@@ -35,6 +35,7 @@ class ProductController extends Controller
         $product = Product::query()
             ->sellable()
             ->withRating()
+            ->with('producer')
             ->where('slug', $slug)
             ->where('is_active', true)
             ->firstOrFail();
@@ -65,7 +66,12 @@ class ProductController extends Controller
         ]);
     }
 
-    private function summarize(Product $product): array
+    /**
+     * The product-card shape. Public so other storefront pages (producer
+     * pages) render cards identically instead of keeping their own copy.
+     * Expects `sellable()` and `withRating()` to have been applied.
+     */
+    public static function summarize(Product $product): array
     {
         return [
             'id' => $product->id,
@@ -117,6 +123,7 @@ class ProductController extends Controller
                 : [],
             // Lets the page show what the contents would cost separately.
             'components_total' => $product->componentsTotal(),
+            'producer_slug' => $product->producer?->is_active ? $product->producer->slug : null,
         ]);
     }
 }

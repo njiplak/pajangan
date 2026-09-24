@@ -9,6 +9,7 @@ use App\Contract\BaseContract;
 use App\Contract\Notification\OrderNotifierContract;
 use App\Contract\Order\OrderContract;
 use App\Contract\Page\PageContract;
+use App\Contract\Producer\ProducerContract;
 use App\Contract\Product\ProductContract;
 use App\Contract\Setting\PermissionContract;
 use App\Contract\Setting\RoleContract;
@@ -21,6 +22,7 @@ use App\Service\BaseService;
 use App\Service\Notification\MailOrderNotifier;
 use App\Service\Order\OrderService;
 use App\Service\Page\PageService;
+use App\Service\Producer\ProducerService;
 use App\Service\Product\ProductService;
 use App\Service\Setting\PermissionService;
 use App\Service\Setting\RoleService;
@@ -47,6 +49,7 @@ class ContractProvider extends ServiceProvider
         OrderContract::class => OrderService::class,
         PageContract::class => PageService::class,
         BannerContract::class => BannerService::class,
+        ProducerContract::class => ProducerService::class,
 
         // Notification — email today; a WhatsApp notifier swaps in here.
         OrderNotifierContract::class => MailOrderNotifier::class,

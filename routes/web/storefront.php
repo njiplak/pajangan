@@ -10,12 +10,16 @@ use App\Http\Controllers\Storefront\CartController;
 use App\Http\Controllers\Storefront\CheckoutController;
 use App\Http\Controllers\Storefront\OrderLookupController;
 use App\Http\Controllers\Storefront\PageController;
+use App\Http\Controllers\Storefront\ProducerController;
 use App\Http\Controllers\Storefront\ProductController;
 use App\Http\Controllers\Storefront\ShippingController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/produk', [ProductController::class, 'index'])->name('products.index');
 Route::get('/produk/{slug}', [ProductController::class, 'show'])->name('products.show');
+
+Route::get('/produsen', [ProducerController::class, 'index'])->name('producers.index');
+Route::get('/produsen/{slug}', [ProducerController::class, 'show'])->name('producers.show');
 
 Route::get('/keranjang', [CartController::class, 'index'])->name('cart.index')->middleware('checkout-mode');
 Route::post('/keranjang', [CartController::class, 'store'])->name('cart.store')->middleware('checkout-mode');

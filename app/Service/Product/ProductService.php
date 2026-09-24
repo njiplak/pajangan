@@ -4,6 +4,7 @@ namespace App\Service\Product;
 
 use App\Contract\Product\ProductContract;
 use App\Models\BundleItem;
+use App\Models\Producer;
 use App\Models\Product;
 use App\Service\BaseService;
 use Exception;
@@ -23,6 +24,7 @@ class ProductService extends BaseService implements ProductContract
 
     public function create($payloads)
     {
+        $this->applyProducer($payloads);
         $bundleItems = $this->extractBundleItems($payloads);
 
         try {
@@ -47,6 +49,7 @@ class ProductService extends BaseService implements ProductContract
 
     public function update($id, $payloads)
     {
+        $this->applyProducer($payloads);
         $bundleItems = $this->extractBundleItems($payloads);
 
         try {
@@ -82,6 +85,24 @@ class ProductService extends BaseService implements ProductContract
         }
 
         return parent::bulkDeleteByIds($ids);
+    }
+
+    /**
+     * The product's producer_name/producer_region are a cache of its
+     * producer, so they are always derived here rather than taken from the
+     * request — they cannot drift from the producer they claim.
+     */
+    private function applyProducer(array &$payloads): void
+    {
+        if (! array_key_exists('producer_id', $payloads)) {
+            return;
+        }
+
+        $producer = $payloads['producer_id'] ? Producer::find($payloads['producer_id']) : null;
+
+        $payloads['producer_id'] = $producer?->id;
+        $payloads['producer_name'] = $producer?->name;
+        $payloads['producer_region'] = $producer?->region;
     }
 
     /**

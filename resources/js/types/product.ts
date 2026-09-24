@@ -9,6 +9,7 @@ export type Product = Model & {
     discount_percent: number | null;
     stock: number;
     weight_gram: number;
+    producer_id: number | null;
     producer_name: string | null;
     producer_region: string | null;
     is_active: boolean;
@@ -62,6 +63,8 @@ export type ProductDetail = ProductSummary & {
     images: string[];
     bundle_items: BundleContentItem[];
     components_total: number;
+    /** Null when the product has no (active) producer page to link to. */
+    producer_slug: string | null;
 };
 
 export type ProductReview = {

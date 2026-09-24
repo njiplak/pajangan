@@ -33,8 +33,8 @@ class ProductRequest extends FormRequest
             'discount_percent' => ['nullable', 'integer', 'min:0', 'max:90'],
             'stock' => [Rule::requiredIf(! $isBundle), 'integer', 'min:0'],
             'weight_gram' => [Rule::requiredIf(! $isBundle), 'integer', 'min:1'],
-            'producer_name' => ['nullable', 'string', 'max:255'],
-            'producer_region' => ['nullable', 'string', 'max:255'],
+            // Name and region are derived from the producer in ProductService.
+            'producer_id' => ['nullable', 'integer', 'exists:producers,id'],
             'is_active' => ['nullable', 'boolean'],
             'is_bundle' => ['nullable', 'boolean'],
             'bundle_items' => [Rule::requiredIf($isBundle), 'array', ...($isBundle ? ['min:1'] : [])],

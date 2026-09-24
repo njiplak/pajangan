@@ -17,6 +17,7 @@ import { cn, formatRupiah, whatsappLink } from '@/lib/utils';
 import { toggle as wishlistToggle } from '@/routes/account/wishlist';
 import { store as cartStore } from '@/routes/cart';
 import { login as customerLogin } from '@/routes/customer';
+import { show as producerShow } from '@/routes/producers';
 import { show as productShow } from '@/routes/products';
 import type { SharedData } from '@/types';
 import type { ProductDetail, ProductReview } from '@/types/product';
@@ -100,12 +101,23 @@ export default function ProductShow({
                         </h1>
                         {(product.producer_name || product.producer_region) && (
                             <p className="mt-1 text-sm text-muted-foreground">
-                                {[
-                                    product.producer_name,
-                                    product.producer_region,
-                                ]
-                                    .filter(Boolean)
-                                    .join(' · ')}
+                                {product.producer_slug ? (
+                                    <Link
+                                        href={producerShow(
+                                            product.producer_slug,
+                                        )}
+                                        className="underline underline-offset-4 hover:text-foreground"
+                                    >
+                                        {product.producer_name}
+                                    </Link>
+                                ) : (
+                                    product.producer_name
+                                )}
+                                {product.producer_name &&
+                                product.producer_region
+                                    ? ' · '
+                                    : ''}
+                                {product.producer_region}
                             </p>
                         )}
                     </div>

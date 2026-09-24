@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { about, home } from '@/routes';
 import { index as accountIndex } from '@/routes/account';
+import { index as producersIndex } from '@/routes/producers';
 import { index as cartIndex } from '@/routes/cart';
 import { login as customerLogin } from '@/routes/customer';
 import { index as productsIndex } from '@/routes/products';
@@ -52,6 +53,9 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
                         </Link>
                         <Link href={productsIndex()} className="transition-colors hover:text-foreground">
                             Produk
+                        </Link>
+                        <Link href={producersIndex()} className="transition-colors hover:text-foreground">
+                            Produsen
                         </Link>
                         <Link href={about()} className="transition-colors hover:text-foreground">
                             Tentang Kami
@@ -109,6 +113,9 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
                     <Link href={productsIndex()} className="whitespace-nowrap">
                         Produk
                     </Link>
+                        <Link href={producersIndex()} className="whitespace-nowrap">
+                            Produsen
+                        </Link>
                     <Link href={about()} className="whitespace-nowrap">
                         Tentang Kami
                     </Link>
@@ -135,6 +142,9 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
                                 <Link href={productsIndex()} className="text-muted-foreground hover:text-foreground">
                                     Produk
                                 </Link>
+                        <Link href={producersIndex()} className="text-muted-foreground hover:text-foreground">
+                            Produsen
+                        </Link>
                                 <Link href={about()} className="text-muted-foreground hover:text-foreground">
                                     Tentang Kami
                                 </Link>

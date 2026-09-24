@@ -19,6 +19,7 @@ class Product extends Model implements HasMedia
         'discount_percent',
         'stock',
         'weight_gram',
+        'producer_id',
         'producer_name',
         'producer_region',
         'is_active',
@@ -160,6 +161,11 @@ class Product extends Model implements HasMedia
     public function reviews()
     {
         return $this->hasMany(ProductReview::class);
+    }
+
+    public function producer()
+    {
+        return $this->belongsTo(Producer::class);
     }
 
     /**

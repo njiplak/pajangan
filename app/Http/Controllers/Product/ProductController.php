@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Product;
 use App\Contract\Product\ProductContract;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ProductRequest;
+use App\Models\Producer;
 use App\Models\Product;
 use App\Utils\WebResponse;
 use Illuminate\Http\Request;
@@ -40,6 +41,7 @@ class ProductController extends Controller
     {
         return Inertia::render('product/form', [
             'componentOptions' => $this->componentOptions(),
+            'producerOptions' => $this->producerOptions(),
         ]);
     }
 
@@ -57,6 +59,7 @@ class ProductController extends Controller
         return Inertia::render('product/form', [
             'product' => $this->transform($product),
             'componentOptions' => $this->componentOptions((int) $id),
+            'producerOptions' => $this->producerOptions(),
         ]);
     }
 
@@ -104,6 +107,11 @@ class ProductController extends Controller
                 'quantity' => $item->quantity,
             ])->values(),
         ]);
+    }
+
+    private function producerOptions(): array
+    {
+        return Producer::query()->orderBy('name')->get(['id', 'name', 'region'])->toArray();
     }
 
     /**

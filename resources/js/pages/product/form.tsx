@@ -18,6 +18,7 @@ import AppLayout from '@/layouts/app-layout';
 import { FormResponse } from '@/lib/constant';
 import { formatRupiah } from '@/lib/utils';
 import { index, store, update } from '@/routes/backoffice/product';
+import type { ProducerOption } from '@/types/producer';
 import type {
     BundleItemInput,
     ComponentOption,
@@ -27,9 +28,14 @@ import type {
 type Props = {
     product?: Product;
     componentOptions: ComponentOption[];
+    producerOptions: ProducerOption[];
 };
 
-export default function ProductForm({ product, componentOptions }: Props) {
+export default function ProductForm({
+    product,
+    componentOptions,
+    producerOptions,
+}: Props) {
     const { data, setData, post, transform, errors, processing } = useForm<{
         name: string;
         description: string;
@@ -37,8 +43,7 @@ export default function ProductForm({ product, componentOptions }: Props) {
         discount_percent: number | string;
         stock: number | string;
         weight_gram: number | string;
-        producer_name: string;
-        producer_region: string;
+        producer_id: string;
         is_active: boolean;
         is_bundle: boolean;
         bundle_items: BundleItemInput[];
@@ -51,8 +56,7 @@ export default function ProductForm({ product, componentOptions }: Props) {
         discount_percent: product?.discount_percent ?? '',
         stock: product?.stock ?? 0,
         weight_gram: product?.weight_gram ?? 1000,
-        producer_name: product?.producer_name ?? '',
-        producer_region: product?.producer_region ?? '',
+        producer_id: product?.producer_id ? String(product.producer_id) : '',
         is_active: product?.is_active ?? true,
         is_bundle: product?.is_bundle ?? false,
         bundle_items: product?.bundle_items ?? [],
@@ -233,25 +237,42 @@ export default function ProductForm({ product, componentOptions }: Props) {
                             </div>
                         </>
                     )}
-                    <div className="flex flex-col gap-1.5">
-                        <Label>Nama UMKM/Produsen</Label>
-                        <Input
-                            value={data.producer_name}
-                            onChange={(e) =>
-                                setData('producer_name', e.target.value)
+                    <div className="flex flex-col gap-1.5 sm:col-span-2">
+                        <Label>Produsen</Label>
+                        <Select
+                            value={data.producer_id || 'none'}
+                            onValueChange={(value) =>
+                                setData(
+                                    'producer_id',
+                                    value === 'none' ? '' : value,
+                                )
                             }
-                        />
-                        <InputError message={errors.producer_name} />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                        <Label>Daerah Asal</Label>
-                        <Input
-                            value={data.producer_region}
-                            onChange={(e) =>
-                                setData('producer_region', e.target.value)
-                            }
-                        />
-                        <InputError message={errors.producer_region} />
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Pilih produsen" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">
+                                    Tanpa produsen
+                                </SelectItem>
+                                {producerOptions.map((producer) => (
+                                    <SelectItem
+                                        key={producer.id}
+                                        value={String(producer.id)}
+                                    >
+                                        {producer.name}
+                                        {producer.region
+                                            ? ` — ${producer.region}`
+                                            : ''}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                            Belum ada di daftar? Tambahkan dulu di menu
+                            Produsen.
+                        </p>
+                        <InputError message={errors.producer_id} />
                     </div>
                 </div>
 
