@@ -12,7 +12,8 @@ use App\Service\Shipping\ShippingDestination;
 use App\Service\Shipping\ShippingEstimator;
 use App\Service\Shipping\ShippingProviderManager;
 use Illuminate\Http\Request;
-use RuntimeException;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class ShippingController extends Controller
 {
@@ -100,8 +101,8 @@ class ShippingController extends Controller
             $areas = $this->shipping->resolve('biteship')->searchAreas($query);
 
             return response()->json(['areas' => $areas]);
-        } catch (RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (Throwable $e) {
+            return $this->courierUnavailable('area search', $e);
         }
     }
 
@@ -121,8 +122,23 @@ class ShippingController extends Controller
             ]);
 
             return response()->json(['rates' => $rates]);
-        } catch (RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (Throwable $e) {
+            return $this->courierUnavailable('rate quote', $e);
         }
+    }
+
+    /**
+     * The provider's own error text is for us, not the shopper: it is
+     * English, names the vendor and can echo internals. Caught broadly
+     * because a network failure is a ConnectionException, which is not a
+     * RuntimeException and previously escaped as a 500.
+     */
+    private function courierUnavailable(string $operation, Throwable $e)
+    {
+        Log::warning("Storefront shipping {$operation} failed: {$e->getMessage()}");
+
+        return response()->json([
+            'message' => 'Layanan pengiriman sedang bermasalah. Silakan coba lagi sesaat lagi.',
+        ], 422);
     }
 }

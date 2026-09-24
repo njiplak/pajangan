@@ -100,3 +100,36 @@ test('rates computes total weight from the cart and quotes against it', function
         return true;
     });
 });
+
+test('a courier error reaches the customer as a plain message, not the raw provider text', function () {
+    biteshipStorefrontConfig();
+
+    Http::fake([
+        'api.biteship.com/v1/maps/areas*' => Http::response(['success' => false, 'error' => 'internal upstream trace xyz'], 500),
+    ]);
+
+    $response = $this->getJson(route('checkout.shipping-areas', ['q' => 'Jayapura']));
+
+    $response->assertStatus(422);
+    expect($response->json('message'))
+        ->toBe('Layanan pengiriman sedang bermasalah. Silakan coba lagi sesaat lagi.')
+        ->not->toContain('Biteship')
+        ->not->toContain('xyz');
+});
+
+test('an unreachable courier is a message, not a server error', function () {
+    biteshipStorefrontConfig();
+
+    Http::fake(fn () => throw new \Illuminate\Http\Client\ConnectionException('cURL error 28: timed out'));
+
+    $this->getJson(route('checkout.shipping-areas', ['q' => 'Jayapura']))
+        ->assertStatus(422)
+        ->assertJson(['message' => 'Layanan pengiriman sedang bermasalah. Silakan coba lagi sesaat lagi.']);
+
+    $product = \App\Models\Product::create(['name' => 'Kopi', 'price' => 60000, 'stock' => 5, 'weight_gram' => 250, 'is_active' => true]);
+    $this->post(route('cart.store'), ['product_id' => $product->id, 'quantity' => 1]);
+
+    $this->postJson(route('checkout.shipping-rates'), ['destination_area_id' => 'AREA-1'])
+        ->assertStatus(422)
+        ->assertJson(['message' => 'Layanan pengiriman sedang bermasalah. Silakan coba lagi sesaat lagi.']);
+});
