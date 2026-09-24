@@ -41,7 +41,8 @@ class MailOrderNotifier implements OrderNotifierContract
 
     public function orderDelivered(Order $order): void
     {
-        $this->deliver($order, new OrderDeliveredMail($order->loadMissing('items')), 'order delivered');
+        // items.product for the review links; one query instead of one per line.
+        $this->deliver($order, new OrderDeliveredMail($order->loadMissing('items.product')), 'order delivered');
     }
 
     public function orderCancelled(Order $order): void

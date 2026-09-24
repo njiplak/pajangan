@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Storefront;
 use App\Http\Controllers\Controller;
 use App\Models\BundleItem;
 use App\Models\Product;
+use App\Models\ProductReview;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -16,6 +17,7 @@ class ProductController extends Controller
 
         $products = Product::query()
             ->sellable()
+            ->withRating()
             ->where('is_active', true)
             ->when($search !== '', fn ($query) => $query->where('name', 'like', "%{$search}%"))
             ->latest()
@@ -32,17 +34,34 @@ class ProductController extends Controller
     {
         $product = Product::query()
             ->sellable()
+            ->withRating()
             ->where('slug', $slug)
             ->where('is_active', true)
             ->firstOrFail();
 
         $customer = request()->user('customer');
+        $myReview = $customer?->reviews()->where('product_id', $product->id)->first();
 
         return Inertia::render('storefront/products/show', [
             'product' => $this->detail($product),
             'inWishlist' => $customer
                 ? $customer->wishlist()->where('product_id', $product->id)->exists()
                 : false,
+            'reviews' => $product->reviews()
+                ->where('is_visible', true)
+                ->with('customer:id,name')
+                ->latest()
+                ->take(10)
+                ->get()
+                ->map(fn (ProductReview $review) => $this->presentReview($review))
+                ->values(),
+            'myReview' => $myReview ? [
+                'rating' => $myReview->rating,
+                'body' => $myReview->body,
+                // Shown to its author so a hidden review is not a mystery.
+                'is_visible' => $myReview->is_visible,
+            ] : null,
+            'canReview' => (bool) $customer?->completedOrderContaining($product),
         ]);
     }
 
@@ -57,9 +76,25 @@ class ProductController extends Controller
             'effective_price' => $product->effectivePrice(),
             'stock' => $product->availableStock(),
             'is_bundle' => $product->is_bundle,
+            'rating_avg' => $product->rating_avg !== null ? round((float) $product->rating_avg, 1) : null,
+            'rating_count' => (int) ($product->rating_count ?? 0),
             'producer_name' => $product->producer_name,
             'producer_region' => $product->producer_region,
             'image' => $product->getFirstMediaUrl('images') ?: null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentReview(ProductReview $review): array
+    {
+        return [
+            'id' => $review->id,
+            'rating' => $review->rating,
+            'body' => $review->body,
+            'author' => $review->authorName(),
+            'created_at' => $review->created_at?->toIso8601String(),
         ];
     }
 

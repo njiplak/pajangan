@@ -13,6 +13,20 @@ Halo {{ $order->customer_name }}, menurut kurir, pesanan
 Terima kasih sudah mendukung UMKM Papua. Kalau ada yang kurang berkenan,
 balas email ini — kami akan bantu.
 
+@php
+    // Only products still in the catalogue can be reviewed.
+    $reviewable = $order->items->filter(fn ($item) => $item->product?->is_active)->unique('product_id');
+@endphp
+@if ($reviewable->isNotEmpty())
+**Bagaimana produknya?** Ulasan Anda membantu pembeli lain dan para
+pelaku UMKM. Masuk dengan akun Google yang memakai email ini, lalu beri
+ulasan di halaman produknya:
+
+@foreach ($reviewable as $item)
+- [{{ $item->product_name }}]({{ route('products.show', $item->product->slug) }})
+@endforeach
+@endif
+
 <x-mail::button :url="$orderUrl">
 Lihat Pesanan
 </x-mail::button>

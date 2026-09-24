@@ -45,6 +45,25 @@ class Customer extends Authenticatable
         return $this->hasMany(WishlistItem::class);
     }
 
+    public function reviews()
+    {
+        return $this->hasMany(ProductReview::class);
+    }
+
+    /**
+     * The most recent completed order of this customer's that contains the
+     * product — what entitles them to review it. Null means they have not
+     * received one yet.
+     */
+    public function completedOrderContaining(Product $product): ?Order
+    {
+        return $this->visibleOrders()
+            ->where('status', Order::STATUS_COMPLETED)
+            ->whereHas('items', fn ($items) => $items->where('product_id', $product->id))
+            ->latest()
+            ->first();
+    }
+
     /**
      * Orders placed on this account, plus guest orders placed under the
      * same address — but the latter only once Google has verified the

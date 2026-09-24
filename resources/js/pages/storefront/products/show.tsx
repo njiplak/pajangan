@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { ProductReviews } from '@/components/storefront/product-reviews';
 import { ShippingEstimate } from '@/components/storefront/shipping-estimate';
 import StorefrontLayout from '@/layouts/storefront-layout';
 import { FormResponse } from '@/lib/constant';
@@ -18,14 +19,27 @@ import { store as cartStore } from '@/routes/cart';
 import { login as customerLogin } from '@/routes/customer';
 import { show as productShow } from '@/routes/products';
 import type { SharedData } from '@/types';
-import type { ProductDetail } from '@/types/product';
+import type { ProductDetail, ProductReview } from '@/types/product';
 
 type Props = {
     product: ProductDetail;
     inWishlist: boolean;
+    reviews: ProductReview[];
+    myReview: {
+        rating: number;
+        body: string | null;
+        is_visible: boolean;
+    } | null;
+    canReview: boolean;
 };
 
-export default function ProductShow({ product, inWishlist }: Props) {
+export default function ProductShow({
+    product,
+    inWishlist,
+    reviews,
+    myReview,
+    canReview,
+}: Props) {
     const [quantity, setQuantity] = useState(1);
     const { settings, customer, googleLoginEnabled } =
         usePage<SharedData>().props;
@@ -86,7 +100,10 @@ export default function ProductShow({ product, inWishlist }: Props) {
                         </h1>
                         {(product.producer_name || product.producer_region) && (
                             <p className="mt-1 text-sm text-muted-foreground">
-                                {[product.producer_name, product.producer_region]
+                                {[
+                                    product.producer_name,
+                                    product.producer_region,
+                                ]
                                     .filter(Boolean)
                                     .join(' · ')}
                             </p>
@@ -113,7 +130,8 @@ export default function ProductShow({ product, inWishlist }: Props) {
                             <Heart
                                 className={cn(
                                     'size-4',
-                                    inWishlist && 'fill-destructive text-destructive',
+                                    inWishlist &&
+                                        'fill-destructive text-destructive',
                                 )}
                             />
                         </Button>
@@ -267,6 +285,15 @@ export default function ProductShow({ product, inWishlist }: Props) {
                           </div>
                       )}
             </div>
+
+            <ProductReviews
+                productId={product.id}
+                ratingAvg={product.rating_avg ?? null}
+                ratingCount={product.rating_count ?? 0}
+                reviews={reviews}
+                myReview={myReview}
+                canReview={canReview}
+            />
         </div>
     );
 }

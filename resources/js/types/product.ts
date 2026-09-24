@@ -49,6 +49,9 @@ export type ProductSummary = {
     effective_price: number;
     stock: number;
     is_bundle: boolean;
+    /** Over published reviews; absent where a listing doesn't compute it. */
+    rating_avg?: number | null;
+    rating_count?: number;
     producer_name: string | null;
     producer_region: string | null;
     image: string | null;
@@ -59,4 +62,12 @@ export type ProductDetail = ProductSummary & {
     images: string[];
     bundle_items: BundleContentItem[];
     components_total: number;
+};
+
+export type ProductReview = {
+    id: number;
+    rating: number;
+    body: string | null;
+    author: string;
+    created_at: string | null;
 };

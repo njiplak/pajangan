@@ -3,6 +3,7 @@
 use App\Http\Controllers\Customer\AccountController;
 use App\Http\Controllers\Customer\AddressController;
 use App\Http\Controllers\Customer\CustomerAuthController;
+use App\Http\Controllers\Customer\ReviewController;
 use App\Http\Controllers\Customer\TrackOrderController;
 use App\Http\Controllers\Customer\WishlistController;
 use App\Http\Controllers\Storefront\CartController;
@@ -63,6 +64,11 @@ Route::middleware('auth:customer')->prefix('akun')->name('account.')->group(func
 
     Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
     Route::post('/wishlist/{product}', [WishlistController::class, 'toggle'])->name('wishlist.toggle');
+
+    Route::post('/ulasan/{product}', [ReviewController::class, 'store'])
+        ->name('reviews.store')
+        ->middleware('throttle:20,1');
+    Route::delete('/ulasan/{product}', [ReviewController::class, 'destroy'])->name('reviews.destroy');
 });
 
 Route::get('/lacak-pesanan', [TrackOrderController::class, 'show'])->name('track.show');

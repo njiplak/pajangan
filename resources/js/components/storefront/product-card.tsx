@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { Star } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { formatRupiah } from '@/lib/utils';
 import { show as productShow } from '@/routes/products';
@@ -48,6 +49,15 @@ export function ProductCard({ product }: { product: ProductSummary }) {
                             </p>
                         )}
                     </div>
+                    {!!product.rating_count && product.rating_avg != null && (
+                        <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Star className="size-3 fill-amber-400 text-amber-400" />
+                            <span className="font-medium text-foreground">
+                                {product.rating_avg.toFixed(1)}
+                            </span>
+                            ({product.rating_count})
+                        </p>
+                    )}
                     {product.producer_region && (
                         <p className="truncate text-xs text-muted-foreground">
                             {product.producer_region}

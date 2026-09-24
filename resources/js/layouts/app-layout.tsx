@@ -9,6 +9,7 @@ import {
     Package,
     Settings,
     ShoppingCart,
+    Star,
     Truck,
     Users,
 } from 'lucide-react';
@@ -242,6 +243,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
                                         >
                                             <Package />
                                             <span>Produk</span>
+                                        </Link>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton
+                                        asChild
+                                        isActive={isMenuActive(
+                                            backoffice.review.index.url(),
+                                        )}
+                                    >
+                                        <Link
+                                            href={backoffice.review.index.url()}
+                                        >
+                                            <Star />
+                                            <span>Ulasan</span>
                                         </Link>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>

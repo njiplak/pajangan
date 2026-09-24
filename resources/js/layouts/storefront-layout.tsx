@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { ShoppingBag, UserRound } from 'lucide-react';
+import { MessageCircle, ShoppingBag, UserRound } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { about, home } from '@/routes';
@@ -8,6 +8,7 @@ import { index as cartIndex } from '@/routes/cart';
 import { login as customerLogin } from '@/routes/customer';
 import { index as productsIndex } from '@/routes/products';
 import { show as trackOrder } from '@/routes/track';
+import { whatsappLink } from '@/lib/utils';
 import type { SharedData } from '@/types';
 
 type StorefrontLayoutProps = {
@@ -125,7 +126,7 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
                                 {footerDescription}
                             </p>
                         </div>
-                        <div className="flex gap-10 text-sm">
+                        <div className="flex flex-wrap gap-x-10 gap-y-6 text-sm">
                             <div className="flex flex-col gap-2">
                                 <p className="font-medium text-foreground">Jelajahi</p>
                                 <Link href={home()} className="text-muted-foreground hover:text-foreground">
@@ -155,6 +156,23 @@ export default function StorefrontLayout({ children }: StorefrontLayoutProps) {
                                     )
                                 )}
                             </div>
+                            {settings.storefront_whatsapp_number && (
+                                <div className="flex flex-col gap-2">
+                                    <p className="font-medium text-foreground">Bantuan</p>
+                                    <a
+                                        href={whatsappLink(
+                                            settings.storefront_whatsapp_number,
+                                            'Halo, saya ingin bertanya.',
+                                        )}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+                                    >
+                                        <MessageCircle className="size-4" />
+                                        WhatsApp
+                                    </a>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <p className="mt-8 text-xs text-muted-foreground">

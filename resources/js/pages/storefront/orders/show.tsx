@@ -3,6 +3,7 @@ import {
     CheckCircle2,
     Clock,
     CreditCard,
+    MessageCircle,
     PackageCheck,
     RotateCcw,
     Truck,
@@ -11,7 +12,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StorefrontLayout from '@/layouts/storefront-layout';
-import { cn, formatRupiah } from '@/lib/utils';
+import { cn, formatRupiah, whatsappLink } from '@/lib/utils';
 import type { SharedData } from '@/types';
 import type {
     OrderStatus,
@@ -259,6 +260,30 @@ export default function OrderShow({
                         : ''}
                 </p>
             </div>
+
+            {settings.storefront_whatsapp_number && (
+                <div className="mt-6 flex flex-col items-center gap-2 rounded-xl border border-border p-5 text-center text-sm">
+                    <p className="font-medium text-foreground">
+                        Butuh bantuan?
+                    </p>
+                    <p className="text-muted-foreground">
+                        Tim kami siap membantu soal pesanan ini.
+                    </p>
+                    <a
+                        href={whatsappLink(
+                            settings.storefront_whatsapp_number,
+                            // Carries the order number so nobody has to ask.
+                            `Halo, saya ingin bertanya tentang pesanan ${order.order_number}.`,
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 font-medium text-foreground transition-colors hover:bg-accent"
+                    >
+                        <MessageCircle className="size-4" />
+                        Chat via WhatsApp
+                    </a>
+                </div>
+            )}
 
             <p className="mt-6 text-center text-xs text-muted-foreground">
                 Tautan halaman ini juga kami kirim ke {order.customer_email}.

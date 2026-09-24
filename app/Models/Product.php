@@ -157,6 +157,23 @@ class Product extends Model implements HasMedia
         return $this->hasMany(BundleItem::class, 'product_id');
     }
 
+    public function reviews()
+    {
+        return $this->hasMany(ProductReview::class);
+    }
+
+    /**
+     * Adds `rating_avg` and `rating_count` over published reviews only.
+     */
+    public function scopeWithRating($query)
+    {
+        $visible = fn ($reviews) => $reviews->where('is_visible', true);
+
+        return $query
+            ->withAvg(['reviews as rating_avg' => $visible], 'rating')
+            ->withCount(['reviews as rating_count' => $visible]);
+    }
+
     public function scopeSellable($query)
     {
         return $query->with('bundleItems.product');
