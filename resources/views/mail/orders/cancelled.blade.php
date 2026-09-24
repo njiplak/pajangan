@@ -1,11 +1,15 @@
 <x-mail::message>
 # Pesanan dibatalkan
 
+@if ($order->paid_at)
 Halo {{ $order->customer_name }}, pesanan **{{ $order->order_number }}**
-kami batalkan karena pembayaran belum kami terima sampai batas waktunya.
-Stok produknya sudah kami kembalikan agar bisa dibeli pembeli lain.
-
-Tidak ada biaya apa pun yang dikenakan kepada Anda.
+telah dibatalkan. Karena pembayaran Anda sudah kami terima, tim kami akan
+menghubungi Anda untuk proses pengembalian dana.
+@else
+Halo {{ $order->customer_name }}, pesanan **{{ $order->order_number }}**
+kami batalkan karena pembayarannya belum kami terima. Tidak ada biaya apa
+pun yang dikenakan kepada Anda.
+@endif
 
 @include('mail.orders._summary')
 

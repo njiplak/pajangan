@@ -59,3 +59,37 @@ export type ShippingRateOption = {
     duration: string | null;
     collection_methods: ShippingCollectionMethod[];
 };
+
+/** The customer-facing order shape; deliberately narrower than Order. */
+export type StorefrontOrder = {
+    order_number: string;
+    status: OrderStatus;
+    created_at: string | null;
+    paid_at: string | null;
+    customer_name: string;
+    customer_email: string;
+    customer_phone: string;
+    shipping_address: string;
+    shipping_city: string;
+    shipping_province: string;
+    shipping_postal_code: string | null;
+    courier_name: string | null;
+    courier_service: string | null;
+    tracking_number: string | null;
+    subtotal: number;
+    shipping_cost: number;
+    admin_fee: number;
+    total: number;
+    items: {
+        id: number;
+        product_name: string;
+        quantity: number;
+        subtotal: number;
+    }[];
+};
+
+export type OrderTimelineStep = {
+    key: string;
+    label: string;
+    done: boolean;
+};

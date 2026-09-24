@@ -258,3 +258,32 @@ test('staff cancelling an order returns its stock and tells the customer', funct
     expect($product->fresh()->stock)->toBe(10);
     Mail::assertSent(OrderCancelledMail::class, 1);
 });
+
+test('an expired unpaid order tells the customer no charge was made', function () {
+    $order = Order::create([
+        'order_number' => 'ORD-CXL-UNPAID',
+        'customer_name' => 'Yohana', 'customer_email' => 'y@example.com', 'customer_phone' => '0812',
+        'shipping_address' => 'Jl. Test', 'shipping_city' => 'Jayapura', 'shipping_province' => 'Papua',
+        'status' => Order::STATUS_CANCELLED, 'subtotal' => 1000, 'total' => 1000,
+    ]);
+
+    $html = (new OrderCancelledMail($order->load('items')))->render();
+
+    expect($html)->toContain('Tidak ada biaya');
+    expect($html)->not->toContain('pengembalian dana');
+});
+
+test('a cancelled paid order promises a refund instead of claiming no charge', function () {
+    $order = Order::create([
+        'order_number' => 'ORD-CXL-PAID',
+        'customer_name' => 'Yohana', 'customer_email' => 'y@example.com', 'customer_phone' => '0812',
+        'shipping_address' => 'Jl. Test', 'shipping_city' => 'Jayapura', 'shipping_province' => 'Papua',
+        'status' => Order::STATUS_CANCELLED, 'subtotal' => 1000, 'total' => 1000,
+        'paid_at' => now(),
+    ]);
+
+    $html = (new OrderCancelledMail($order->load('items')))->render();
+
+    expect($html)->toContain('pengembalian dana');
+    expect($html)->not->toContain('Tidak ada biaya');
+});
