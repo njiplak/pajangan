@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     ChevronsUpDown,
+    Contact,
     CreditCard,
     FileText,
     GalleryHorizontal,
@@ -320,6 +321,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
                                         >
                                             <ShoppingCart />
                                             <span>Pesanan</span>
+                                        </Link>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton
+                                        asChild
+                                        isActive={isMenuActive(
+                                            backoffice.customer.index.url(),
+                                        )}
+                                    >
+                                        <Link
+                                            href={backoffice.customer.index.url()}
+                                        >
+                                            <Contact />
+                                            <span>Pelanggan</span>
                                         </Link>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>

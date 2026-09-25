@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Setting;
 use App\Contract\Setting\RoleContract;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RoleRequest;
+use App\Utils\ListFilter;
 use App\Utils\WebResponse;
 use Illuminate\Support\Facades\Request;
 use Inertia\Inertia;
@@ -27,7 +28,7 @@ class RoleController extends Controller
     public function fetch()
     {
         $data = $this->service->all(
-            allowedFilters: [],
+            allowedFilters: [ListFilter::search(['name'])],
             allowedSorts: [],
             withPaginate: true,
             perPage: request()->get('per_page', 10)

@@ -32,6 +32,9 @@ class ProductRequest extends FormRequest
             'price' => ['required', 'integer', 'min:0'],
             'discount_percent' => ['nullable', 'integer', 'min:0', 'max:90'],
             'stock' => [Rule::requiredIf(! $isBundle), 'integer', 'min:0'],
+            // The stock the edit form was loaded with. Only the difference
+            // staff typed is applied, so units sold meanwhile aren't undone.
+            'stock_seen' => [Rule::requiredIf(! $isBundle && $this->isMethod('put')), 'integer', 'min:0'],
             'weight_gram' => [Rule::requiredIf(! $isBundle), 'integer', 'min:1'],
             // Name and region are derived from the producer in ProductService.
             'producer_id' => ['nullable', 'integer', 'exists:producers,id'],

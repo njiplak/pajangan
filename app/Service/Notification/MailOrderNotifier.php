@@ -6,6 +6,8 @@ use App\Contract\Notification\OrderNotifierContract;
 use App\Mail\OrderCancelledMail;
 use App\Mail\OrderDeliveredMail;
 use App\Mail\OrderPlacedMail;
+use App\Mail\OrderRefundedMail;
+use App\Mail\OrderShipmentCancelledMail;
 use App\Mail\OrderShippedMail;
 use App\Mail\PaymentReceivedMail;
 use App\Models\Order;
@@ -39,6 +41,11 @@ class MailOrderNotifier implements OrderNotifierContract
         $this->deliver($order, new OrderShippedMail($order->loadMissing('items')), 'order shipped');
     }
 
+    public function orderShipmentCancelled(Order $order, ?string $voidTrackingNumber): void
+    {
+        $this->deliver($order, new OrderShipmentCancelledMail($order->loadMissing('items'), $voidTrackingNumber), 'shipment cancelled');
+    }
+
     public function orderDelivered(Order $order): void
     {
         // items.product for the review links; one query instead of one per line.
@@ -48,6 +55,11 @@ class MailOrderNotifier implements OrderNotifierContract
     public function orderCancelled(Order $order): void
     {
         $this->deliver($order, new OrderCancelledMail($order->loadMissing('items')), 'order cancelled');
+    }
+
+    public function orderRefunded(Order $order): void
+    {
+        $this->deliver($order, new OrderRefundedMail($order->loadMissing('items')), 'order refunded');
     }
 
     private function deliver(Order $order, Mailable $mailable, string $label): void

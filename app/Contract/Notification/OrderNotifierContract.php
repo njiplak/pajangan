@@ -36,6 +36,12 @@ interface OrderNotifierContract
     public function orderShipped(Order $order): void;
 
     /**
+     * The shipment the customer was told about was withdrawn, so the
+     * tracking number they hold no longer leads anywhere.
+     */
+    public function orderShipmentCancelled(Order $order, ?string $voidTrackingNumber): void;
+
+    /**
      * The courier reports the parcel as delivered.
      */
     public function orderDelivered(Order $order): void;
@@ -45,4 +51,9 @@ interface OrderNotifierContract
      * arrived within the hold window and the stock has gone back.
      */
     public function orderCancelled(Order $order): void;
+
+    /**
+     * Staff have sent back the money for a cancelled order.
+     */
+    public function orderRefunded(Order $order): void;
 }

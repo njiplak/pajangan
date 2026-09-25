@@ -3,6 +3,7 @@
 use App\Http\Controllers\BackofficeController;
 use App\Http\Controllers\Banner\BannerController;
 use App\Http\Controllers\Category\CategoryController;
+use App\Http\Controllers\Customer\CustomerAdminController;
 use App\Http\Controllers\Order\OrderController;
 use App\Http\Controllers\Page\PageController;
 use App\Http\Controllers\Producer\ProducerController;
@@ -74,15 +75,29 @@ Route::group(['middleware' => 'auth', 'prefix' => 'backoffice', 'as' => 'backoff
         Route::post('/destroy-bulk', [BannerController::class, 'destroy_bulk'])->name('destroy-bulk')->middleware('permission:banner.delete');
     });
 
+    Route::group(['prefix' => 'customer', 'as' => 'customer.'], function () {
+        Route::get('/', [CustomerAdminController::class, 'index'])->name('index')->middleware('permission:order.view');
+        Route::get('/fetch', [CustomerAdminController::class, 'fetch'])->name('fetch')->middleware('permission:order.view');
+        Route::get('/{id}', [CustomerAdminController::class, 'show'])->name('show')->middleware('permission:order.view');
+    });
+
     Route::group(['prefix' => 'order', 'as' => 'order.'], function () {
         Route::get('/', [OrderController::class, 'index'])->name('index')->middleware('permission:order.view');
         Route::get('/fetch', [OrderController::class, 'fetch'])->name('fetch')->middleware('permission:order.view');
         Route::get('/shipping/areas', [OrderController::class, 'searchShippingAreas'])->name('shipping-areas')->middleware('permission:order.update');
+        Route::get('/export', [OrderController::class, 'export'])->name('export')->middleware('permission:order.view');
+        Route::get('/create', [OrderController::class, 'create'])->name('create')->middleware('permission:order.update');
+        Route::post('/', [OrderController::class, 'store'])->name('store')->middleware('permission:order.update');
         Route::get('/{id}', [OrderController::class, 'show'])->name('show')->middleware('permission:order.view');
+        Route::get('/{id}/print', [OrderController::class, 'print'])->name('print')->middleware('permission:order.view');
+        Route::put('/{id}/details', [OrderController::class, 'updateDetails'])->name('update-details')->middleware('permission:order.update');
         Route::post('/{id}/shipping/rates', [OrderController::class, 'quoteShippingRates'])->name('shipping-rates')->middleware('permission:order.update');
         Route::post('/{id}/shipping/create', [OrderController::class, 'createShipment'])->name('shipping-create')->middleware('permission:order.update');
         Route::post('/{id}/shipping/cancel', [OrderController::class, 'cancelShipment'])->name('shipping-cancel')->middleware('permission:order.update');
         Route::put('/{id}/shipping', [OrderController::class, 'updateShipping'])->name('update-shipping')->middleware('permission:order.update');
         Route::put('/{id}/status', [OrderController::class, 'updateStatus'])->name('update-status')->middleware('permission:order.update');
+        Route::post('/{id}/payment/check', [OrderController::class, 'checkPayment'])->name('payment-check')->middleware('permission:order.update');
+        Route::post('/{id}/refund', [OrderController::class, 'refund'])->name('refund')->middleware('permission:order.update');
+        Route::post('/{id}/notes', [OrderController::class, 'addNote'])->name('notes')->middleware('permission:order.update');
     });
 });

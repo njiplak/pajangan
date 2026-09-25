@@ -24,17 +24,28 @@ import type {
     BundleItemInput,
     ComponentOption,
     Product,
+    StockMovement,
 } from '@/types/product';
 
 type Props = {
     product?: Product;
+    stockMovements?: StockMovement[];
     componentOptions: ComponentOption[];
     producerOptions: ProducerOption[];
     categoryOptions: CategoryOption[];
 };
 
+const STOCK_REASON_LABEL: Record<string, string> = {
+    initial: 'Stok awal',
+    checkout: 'Terjual online',
+    manual_order: 'Pesanan manual',
+    release: 'Kembali dari pesanan batal',
+    adjustment: 'Penyesuaian staf',
+};
+
 export default function ProductForm({
     product,
+    stockMovements = [],
     componentOptions,
     producerOptions,
     categoryOptions,
@@ -45,6 +56,7 @@ export default function ProductForm({
         price: number | string;
         discount_percent: number | string;
         stock: number | string;
+        stock_seen: number;
         weight_gram: number | string;
         producer_id: string;
         category_id: string;
@@ -59,6 +71,9 @@ export default function ProductForm({
         price: product?.price ?? 0,
         discount_percent: product?.discount_percent ?? '',
         stock: product?.stock ?? 0,
+        // What this form opened with: the server applies only the change
+        // staff typed, so sales made while the form is open are kept.
+        stock_seen: product?.stock ?? 0,
         weight_gram: product?.weight_gram ?? 1000,
         producer_id: product?.producer_id ? String(product.producer_id) : '',
         category_id: product?.category_id ? String(product.category_id) : '',
@@ -226,6 +241,13 @@ export default function ProductForm({
                                         setData('stock', e.target.value)
                                     }
                                 />
+                                {product && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Yang disimpan hanya selisih dari{' '}
+                                        {data.stock_seen}; penjualan selama
+                                        halaman ini terbuka tetap terhitung.
+                                    </p>
+                                )}
                                 <InputError message={errors.stock} />
                             </div>
                             <div className="flex flex-col gap-1.5">
@@ -487,6 +509,57 @@ export default function ProductForm({
                     </Button>
                 </div>
             </form>
+
+            {product && !product.is_bundle && (
+                <div className="border-t border-border pt-4 text-sm">
+                    <h2 className="font-semibold">Riwayat Stok</h2>
+                    {stockMovements.length === 0 ? (
+                        <p className="mt-2 text-muted-foreground">
+                            Belum ada perubahan stok tercatat.
+                        </p>
+                    ) : (
+                        <ul className="mt-2 divide-y divide-border">
+                            {stockMovements.map((movement) => (
+                                <li
+                                    key={movement.id}
+                                    className="flex flex-wrap items-center justify-between gap-2 py-2"
+                                >
+                                    <span>
+                                        <span
+                                            className={
+                                                movement.change < 0
+                                                    ? 'font-medium text-destructive'
+                                                    : 'font-medium text-foreground'
+                                            }
+                                        >
+                                            {movement.change > 0 ? '+' : ''}
+                                            {movement.change}
+                                        </span>{' '}
+                                        <span className="text-muted-foreground">
+                                            {STOCK_REASON_LABEL[
+                                                movement.reason
+                                            ] ?? movement.reason}
+                                            {movement.order_number
+                                                ? ` · ${movement.order_number}`
+                                                : ''}
+                                            {movement.note
+                                                ? ` · ${movement.note}`
+                                                : ''}
+                                        </span>
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                        sisa {movement.stock_after} ·{' '}
+                                        {movement.user_name ?? 'Sistem'}
+                                        {movement.created_at
+                                            ? ` · ${new Date(movement.created_at).toLocaleString('id-ID')}`
+                                            : ''}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

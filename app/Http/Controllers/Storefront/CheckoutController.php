@@ -6,19 +6,19 @@ use App\Contract\Notification\OrderNotifierContract;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Customer\AddressController;
 use App\Http\Requests\CheckoutRequest;
-use App\Models\BundleItem;
 use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\Product;
+use App\Models\StockMovement;
 use App\Service\Cart\CartService;
 use App\Service\Customer\AddressBook;
+use App\Service\Order\OrderActivityLog;
+use App\Service\Order\StockDrawException;
+use App\Service\Order\StockDrawPlanner;
 use App\Service\Payment\PaymentService;
 use App\Service\Shipping\FreeShipping;
 use App\Service\Shipping\ShippingProviderManager;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
@@ -33,6 +33,8 @@ class CheckoutController extends Controller
         private readonly OrderNotifierContract $notifier,
         private readonly AddressBook $addressBook,
         private readonly FreeShipping $freeShipping,
+        private readonly StockDrawPlanner $planner,
+        private readonly OrderActivityLog $activity,
     ) {}
 
     public function index()
@@ -87,116 +89,22 @@ class CheckoutController extends Controller
         $quoted = $this->quoteSelectedRate($request);
 
         $result = DB::transaction(function () use ($rawCart, $request, $quoted) {
-            $cartIds = array_keys($rawCart);
-
-            // A bundle sells its components' stock, so the rows to lock are
-            // the cart's own products plus everything those bundles contain.
-            $componentIds = BundleItem::query()
-                ->whereIn('bundle_id', $cartIds)
-                ->pluck('product_id')
-                ->all();
-
-            // Lock the involved product rows so a concurrent checkout can't
-            // oversell the same stock between our read and our write.
-            $products = Product::query()
-                ->whereIn('id', array_unique(array_merge($cartIds, $componentIds)))
-                ->lockForUpdate()
-                ->get()
-                ->keyBy('id');
-
-            // Re-read composition now that the rows are held: a bundle
-            // edited between the two reads must not slip past this check.
-            $bundleItems = BundleItem::query()->whereIn('bundle_id', $cartIds)->get();
-
-            foreach ($bundleItems as $bundleItem) {
-                if (! $products->has($bundleItem->product_id)) {
-                    throw ValidationException::withMessages([
-                        'cart' => 'Isi paket di keranjang Anda baru saja berubah. Silakan periksa kembali keranjang Anda.',
-                    ]);
-                }
-            }
-
-            // Point each bundle at the locked component rows, so
-            // availableStock() reads what we hold rather than issuing a
-            // fresh unlocked query through the relation.
-            $itemsByBundle = $bundleItems->groupBy('bundle_id');
-
-            foreach ($products as $product) {
-                if ($product->is_bundle) {
-                    $items = $itemsByBundle->get($product->id, collect())->each(
-                        fn (BundleItem $bundleItem) => $bundleItem->setRelation('product', $products->get($bundleItem->product_id))
-                    );
-
-                    $product->setRelation('bundleItems', $items);
-                }
-            }
-
-            $lineItems = [];
-            $subtotal = 0;
-            $weightGrams = 0;
-            $stockDraw = [];
-
-            foreach ($rawCart as $productId => $quantity) {
-                $product = $products->get($productId);
-
-                if (! $product || ! $product->is_active) {
-                    throw ValidationException::withMessages([
-                        'cart' => 'Salah satu produk di keranjang Anda sudah tidak tersedia. Silakan periksa kembali keranjang Anda.',
-                    ]);
-                }
-
-                $available = $product->availableStock();
-
-                if ($available < $quantity) {
-                    throw ValidationException::withMessages([
-                        'cart' => "Stok {$product->name} tinggal {$available}. Silakan sesuaikan jumlah di keranjang Anda.",
-                    ]);
-                }
-
-                $unitPrice = $product->effectivePrice();
-                $lineSubtotal = $unitPrice * $quantity;
-                $subtotal += $lineSubtotal;
-                $weightGrams += $product->shippingWeightGram() * $quantity;
-
-                if ($product->is_bundle) {
-                    foreach ($product->bundleItems as $bundleItem) {
-                        $stockDraw[$bundleItem->product_id] =
-                            ($stockDraw[$bundleItem->product_id] ?? 0) + ($bundleItem->quantity * $quantity);
-                    }
-                } else {
-                    $stockDraw[$productId] = ($stockDraw[$productId] ?? 0) + $quantity;
-                }
-
-                $lineItems[] = [
-                    'product' => $product,
-                    'quantity' => $quantity,
-                    'unit_price' => $unitPrice,
-                    'subtotal' => $lineSubtotal,
-                ];
-            }
-
-            // Per-line checks aren't enough: a bundle and the component's
-            // own listing can each pass alone yet exceed the stock together.
-            foreach ($stockDraw as $componentId => $units) {
-                $component = $products->get($componentId);
-
-                if (! $component || $component->stock < $units) {
-                    $name = $component->name ?? 'produk';
-
-                    throw ValidationException::withMessages([
-                        'cart' => "Stok {$name} tidak mencukupi untuk seluruh isi keranjang Anda. Silakan sesuaikan jumlah di keranjang Anda.",
-                    ]);
-                }
+            try {
+                $plan = $this->planner->plan($rawCart);
+            } catch (StockDrawException $e) {
+                throw ValidationException::withMessages(['cart' => $this->cartMessage($e)]);
             }
 
             // The quote above priced a parcel of a particular weight. If the
             // authoritative weight differs, that quote is for a different
             // shipment and must not be charged.
-            if ($weightGrams !== $quoted['weight_gram']) {
+            if ($plan['weight_gram'] !== $quoted['weight_gram']) {
                 throw ValidationException::withMessages([
                     'cart' => 'Isi keranjang Anda baru saja berubah. Silakan periksa kembali keranjang Anda.',
                 ]);
             }
+
+            $subtotal = $plan['subtotal'];
 
             // Judged on the authoritative subtotal computed under lock.
             $shippingDiscount = $this->freeShipping->discountFor($subtotal, $quoted['price']);
@@ -205,7 +113,7 @@ class CheckoutController extends Controller
                 // Null for guests; set when signed in so the order lands in
                 // the account even if they typed a different email.
                 'customer_id' => $request->user('customer')?->id,
-                'order_number' => $this->generateOrderNumber(),
+                'order_number' => Order::generateNumber(),
                 'customer_name' => $request->validated('customer_name'),
                 'customer_email' => $request->validated('customer_email'),
                 'customer_phone' => $request->validated('customer_phone'),
@@ -216,7 +124,7 @@ class CheckoutController extends Controller
                 'notes' => $request->validated('notes'),
                 // Recorded now so a later release returns exactly this,
                 // whatever happens to the bundles in the meantime.
-                'stock_draw' => $stockDraw,
+                'stock_draw' => $plan['draw'],
                 'status' => Order::STATUS_PENDING,
                 'subtotal' => $subtotal,
                 'shipping_cost' => $quoted['price'],
@@ -229,22 +137,11 @@ class CheckoutController extends Controller
                 'total' => $subtotal + $quoted['price'] - $shippingDiscount,
             ]);
 
-            foreach ($lineItems as $item) {
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $item['product']->id,
-                    'product_name' => $item['product']->name,
-                    'unit_price' => $item['unit_price'],
-                    'quantity' => $item['quantity'],
-                    'subtotal' => $item['subtotal'],
-                ]);
-            }
+            $this->planner->apply($plan, $order, StockMovement::REASON_CHECKOUT);
 
-            foreach ($stockDraw as $componentId => $units) {
-                $products->get($componentId)->decrement('stock', $units);
-            }
+            $this->activity->record($order, 'created', 'Pesanan dibuat dari toko online.');
 
-            return ['order' => $order, 'weight_gram' => $weightGrams];
+            return ['order' => $order, 'weight_gram' => $plan['weight_gram']];
         });
 
         $order = $result['order'];
@@ -364,12 +261,13 @@ class CheckoutController extends Controller
         ];
     }
 
-    private function generateOrderNumber(): string
+    private function cartMessage(StockDrawException $e): string
     {
-        do {
-            $candidate = 'ORD-'.now()->format('Ymd').'-'.Str::upper(Str::random(6));
-        } while (Order::query()->where('order_number', $candidate)->exists());
-
-        return $candidate;
+        return match ($e->reason) {
+            StockDrawException::BUNDLE_CHANGED => 'Isi paket di keranjang Anda baru saja berubah. Silakan periksa kembali keranjang Anda.',
+            StockDrawException::UNAVAILABLE => 'Salah satu produk di keranjang Anda sudah tidak tersedia. Silakan periksa kembali keranjang Anda.',
+            StockDrawException::LINE_SHORT => "Stok {$e->productName} tinggal {$e->available}. Silakan sesuaikan jumlah di keranjang Anda.",
+            default => 'Stok '.($e->productName ?? 'produk').' tidak mencukupi untuk seluruh isi keranjang Anda. Silakan sesuaikan jumlah di keranjang Anda.',
+        };
     }
 }

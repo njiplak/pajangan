@@ -10,11 +10,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import ActivityPanel from '@/components/order/activity-panel';
+import DetailsEditor from '@/components/order/details-editor';
+import PaymentPanel from '@/components/order/payment-panel';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { FormResponse } from '@/lib/constant';
 import { formatRupiah, getCsrfToken } from '@/lib/utils';
 import {
+    print,
     shippingAreas,
     shippingCancel,
     shippingCreate,
@@ -24,6 +28,7 @@ import {
 } from '@/routes/backoffice/order';
 import type {
     Order,
+    OrderActivity,
     OrderStatus,
     ShippingArea,
     ShippingCollectionMethod,
@@ -53,24 +58,76 @@ const CANCELLATION_REASON_LABEL: Record<string, string> = {
 
 type Props = {
     order: Order;
-    statuses: OrderStatus[];
+    nextStatuses: OrderStatus[];
+    canCheckPayment: boolean;
+    canRefund: boolean;
+    canUpdate: boolean;
+    activities: OrderActivity[];
     preferredCollectionMethod: ShippingCollectionMethod | null;
 };
 
+// Mirrors OrderService::notifyStatusChange so staff know who hears about it.
+function statusChangePrompt(order: Order, next: OrderStatus): string {
+    const lines = [
+        `Ubah status pesanan ke "${STATUS_LABEL[next] ?? next}"? Status tidak bisa dikembalikan.`,
+    ];
+
+    switch (next) {
+        case 'paid':
+            lines.push(
+                'Pembayaran dicatat sebagai diterima dan pelanggan menerima email tanda terima.',
+            );
+            break;
+        case 'shipped':
+            if (!order.biteship_order_id) {
+                lines.push(
+                    'Pelanggan menerima email bahwa pesanan sedang dikirim.',
+                );
+            }
+            break;
+        case 'completed':
+            lines.push('Pelanggan menerima email bahwa pesanan telah sampai.');
+            break;
+        case 'cancelled':
+            lines.push(
+                'Stok dikembalikan dan pelanggan menerima email pembatalan.',
+            );
+            if (order.paid_at) {
+                lines.push(
+                    'Pesanan ini sudah dibayar — staf akan menerima email pengingat pengembalian dana.',
+                );
+            }
+            break;
+    }
+
+    return lines.join('\n\n');
+}
+
 export default function OrderShow({
     order,
-    statuses,
+    nextStatuses,
+    canCheckPayment,
+    canRefund,
+    canUpdate,
+    activities,
     preferredCollectionMethod,
 }: Props) {
-    const [status, setStatus] = useState<OrderStatus>(order.status);
     const [processing, setProcessing] = useState(false);
+    // Mirrors Order::awaitsShipment().
+    const awaitsShipment =
+        order.status === 'paid' || order.status === 'processing';
 
     const onStatusChange = (value: string) => {
-        setStatus(value as OrderStatus);
+        const next = value as OrderStatus;
+
+        if (!window.confirm(statusChangePrompt(order, next))) {
+            return;
+        }
+
         setProcessing(true);
         router.put(
             updateStatus(order.id).url,
-            { status: value },
+            { status: next },
             {
                 ...FormResponse,
                 preserveScroll: true,
@@ -293,22 +350,40 @@ export default function OrderShow({
                         {new Date(order.created_at).toLocaleString('id-ID')}
                     </p>
                 </div>
-                <Select
-                    value={status}
-                    onValueChange={onStatusChange}
-                    disabled={processing}
-                >
-                    <SelectTrigger className="w-56">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {statuses.map((s) => (
-                            <SelectItem key={s} value={s}>
-                                {STATUS_LABEL[s] ?? s}
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button asChild variant="outline" size="sm">
+                        <a
+                            href={print(order.id).url}
+                            target="_blank"
+                            rel="noopener"
+                        >
+                            Cetak Slip
+                        </a>
+                    </Button>
+                    <Select
+                        value={order.status}
+                        onValueChange={onStatusChange}
+                        disabled={
+                            !canUpdate ||
+                            processing ||
+                            nextStatuses.length === 0
+                        }
+                    >
+                        <SelectTrigger className="w-56">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value={order.status} disabled>
+                                {STATUS_LABEL[order.status] ?? order.status}
                             </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                            {nextStatuses.map((s) => (
+                                <SelectItem key={s} value={s}>
+                                    {STATUS_LABEL[s] ?? s}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-3">
@@ -337,39 +412,22 @@ export default function OrderShow({
                     </div>
                 </div>
 
-                <div className="rounded-xl border border-border bg-card p-5 text-sm">
-                    <h2 className="font-semibold text-foreground">Pelanggan</h2>
-                    <p className="mt-2 text-muted-foreground">
-                        {order.customer_name}
-                    </p>
-                    <p className="text-muted-foreground">
-                        {order.customer_email}
-                    </p>
-                    <p className="text-muted-foreground">
-                        {order.customer_phone}
-                    </p>
+                <DetailsEditor order={order} canUpdate={canUpdate} />
+            </div>
 
-                    <h2 className="mt-4 font-semibold text-foreground">
-                        Alamat Pengiriman
-                    </h2>
-                    <p className="mt-2 text-muted-foreground">
-                        {order.shipping_address}, {order.shipping_city},{' '}
-                        {order.shipping_province}
-                        {order.shipping_postal_code
-                            ? ` ${order.shipping_postal_code}`
-                            : ''}
-                    </p>
-
-                    {order.notes && (
-                        <>
-                            <h2 className="mt-4 font-semibold text-foreground">
-                                Catatan
-                            </h2>
-                            <p className="mt-2 text-muted-foreground">
-                                {order.notes}
-                            </p>
-                        </>
-                    )}
+            <div className="grid gap-4 lg:grid-cols-3">
+                <PaymentPanel
+                    order={order}
+                    canCheckPayment={canCheckPayment}
+                    canRefund={canRefund}
+                    canUpdate={canUpdate}
+                />
+                <div className="lg:col-span-2">
+                    <ActivityPanel
+                        orderId={order.id}
+                        activities={activities}
+                        canUpdate={canUpdate}
+                    />
                 </div>
             </div>
 
@@ -605,6 +663,7 @@ export default function OrderShow({
                         !selectedArea ||
                         !selectedRate ||
                         Boolean(order.biteship_order_id) ||
+                        !awaitsShipment ||
                         creatingShipment
                     }
                     onClick={onCreateShipment}
@@ -616,9 +675,9 @@ export default function OrderShow({
                           : 'Buat Pengiriman di Biteship'}
                 </Button>
                 <p className="mt-1 text-xs text-muted-foreground">
-                    Membuat pengiriman nyata (memakai saldo Biteship, bukan
-                    sekadar cek tarif). Nomor resi terisi otomatis begitu kurir
-                    dialokasikan.
+                    {awaitsShipment || order.biteship_order_id
+                        ? 'Membuat pengiriman nyata (memakai saldo Biteship, bukan sekadar cek tarif). Nomor resi terisi otomatis begitu kurir dialokasikan.'
+                        : 'Pengiriman hanya bisa dibuat untuk pesanan yang sudah dibayar dan belum dikirim.'}
                 </p>
 
                 <div className="mt-4 flex flex-col gap-1.5 sm:max-w-xs">

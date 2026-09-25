@@ -20,7 +20,7 @@ export type OrderItem = Model & {
 export type Order = Model & {
     order_number: string;
     customer_name: string;
-    customer_email: string;
+    customer_email: string | null;
     customer_phone: string;
     shipping_address: string;
     shipping_city: string;
@@ -37,9 +37,25 @@ export type Order = Model & {
     biteship_order_id: string | null;
     notes: string | null;
     status: OrderStatus;
+    paid_at: string | null;
+    refunded_at: string | null;
+    refund_reference: string | null;
+    payment_gateway: string | null;
+    payment_channel: string | null;
+    payment_status: string | null;
     subtotal: number;
+    shipping_discount: number;
+    admin_fee: number | null;
     total: number;
     items: OrderItem[];
+};
+
+export type OrderActivity = {
+    id: number;
+    action: string;
+    description: string;
+    user_name: string | null;
+    created_at: string | null;
 };
 
 export type ShippingArea = {

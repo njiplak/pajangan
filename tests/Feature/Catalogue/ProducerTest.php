@@ -63,13 +63,13 @@ test('a product takes its producer name and region from the producer', function 
         ->toBe(['producer_id' => $wamena->id, 'producer_name' => 'Koperasi Wamena', 'producer_region' => 'Wamena']);
 
     $this->put(route('backoffice.product.update', $product->id), [
-        'name' => 'Kopi', 'price' => 60000, 'stock' => 5, 'weight_gram' => 250, 'is_active' => true,
+        'name' => 'Kopi', 'price' => 60000, 'stock' => 5, 'stock_seen' => 5, 'weight_gram' => 250, 'is_active' => true,
         'producer_id' => $arfak->id,
     ]);
     expect($product->fresh()->producer_name)->toBe('Tani Arfak');
 
     $this->put(route('backoffice.product.update', $product->id), [
-        'name' => 'Kopi', 'price' => 60000, 'stock' => 5, 'weight_gram' => 250, 'is_active' => true,
+        'name' => 'Kopi', 'price' => 60000, 'stock' => 5, 'stock_seen' => 5, 'weight_gram' => 250, 'is_active' => true,
         'producer_id' => null,
     ]);
     expect($product->fresh()->only('producer_id', 'producer_name'))->toBe(['producer_id' => null, 'producer_name' => null]);

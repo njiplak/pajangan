@@ -6,6 +6,7 @@ use App\Contract\Banner\BannerContract;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\BannerRequest;
 use App\Models\Banner;
+use App\Utils\ListFilter;
 use App\Utils\WebResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -27,7 +28,7 @@ class BannerController extends Controller
     public function fetch()
     {
         $data = $this->service->all(
-            allowedFilters: [],
+            allowedFilters: [ListFilter::search(['title'])],
             allowedSorts: [],
             withPaginate: true,
             perPage: request()->get('per_page', 10)

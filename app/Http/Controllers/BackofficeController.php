@@ -2,19 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use App\Contract\Setting\SettingContract;
 use App\Models\Order;
 use App\Models\Product;
+use App\Service\Stock\StockLedger;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class BackofficeController extends Controller
 {
-    public function __construct(private readonly SettingContract $settings) {}
+    public function __construct(private readonly StockLedger $ledger) {}
 
     public function index()
     {
-        $lowStockThreshold = (int) ($this->settings->allAsKeyValue()['low_stock_threshold'] ?? 10);
+        $lowStockThreshold = $this->ledger->lowStockThreshold();
 
         $paidOrders = Order::query()
             ->whereNotNull('paid_at')

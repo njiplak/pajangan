@@ -75,3 +75,15 @@ export type ProductReview = {
     author: string;
     created_at: string | null;
 };
+
+/** One line of a product's stock history in the backoffice. */
+export type StockMovement = {
+    id: number;
+    change: number;
+    stock_after: number;
+    reason: string;
+    note: string | null;
+    order_number: string | null;
+    user_name: string | null;
+    created_at: string | null;
+};

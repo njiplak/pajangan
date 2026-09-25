@@ -8,6 +8,8 @@ use App\Http\Requests\ProductRequest;
 use App\Models\Category;
 use App\Models\Producer;
 use App\Models\Product;
+use App\Models\StockMovement;
+use App\Utils\ListFilter;
 use App\Utils\WebResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -29,7 +31,7 @@ class ProductController extends Controller
     public function fetch()
     {
         $data = $this->service->all(
-            allowedFilters: [],
+            allowedFilters: [ListFilter::search(['name', 'producer_name'])],
             allowedSorts: [],
             withPaginate: true,
             perPage: request()->get('per_page', 10)
@@ -65,6 +67,7 @@ class ProductController extends Controller
 
         return Inertia::render('product/form', [
             'product' => $this->transform($product),
+            'stockMovements' => $this->stockMovements($product),
             'componentOptions' => $this->componentOptions((int) $id),
             'producerOptions' => $this->producerOptions(),
             'categoryOptions' => Category::query()->orderBy('sort_order')->orderBy('name')->get(['id', 'name'])->toArray(),
@@ -115,6 +118,26 @@ class ProductController extends Controller
                 'quantity' => $item->quantity,
             ])->values(),
         ]);
+    }
+
+    private function stockMovements(Product $product): array
+    {
+        return StockMovement::query()
+            ->with(['order:id,order_number', 'user:id,name'])
+            ->where('product_id', $product->id)
+            ->latest('id')
+            ->take(20)
+            ->get()
+            ->map(fn (StockMovement $movement) => [
+                'id' => $movement->id,
+                'change' => $movement->change,
+                'stock_after' => $movement->stock_after,
+                'reason' => $movement->reason,
+                'note' => $movement->note,
+                'order_number' => $movement->order?->order_number,
+                'user_name' => $movement->user?->name,
+                'created_at' => $movement->created_at?->toIso8601String(),
+            ])->all();
     }
 
     private function producerOptions(): array

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Page;
 use App\Contract\Page\PageContract;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PageRequest;
+use App\Utils\ListFilter;
 use App\Utils\WebResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -26,7 +27,7 @@ class PageController extends Controller
     public function fetch()
     {
         $data = $this->service->all(
-            allowedFilters: [],
+            allowedFilters: [ListFilter::search(['title', 'slug'])],
             allowedSorts: [],
             withPaginate: true,
             perPage: request()->get('per_page', 10)

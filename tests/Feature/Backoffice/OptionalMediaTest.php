@@ -25,6 +25,7 @@ function productPayload(array $overrides = []): array
         'name' => 'Kopi Wamena',
         'price' => 60000,
         'stock' => 10,
+        'stock_seen' => 10,
         'weight_gram' => 250,
         'is_active' => true,
     ], $overrides);

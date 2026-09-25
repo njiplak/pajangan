@@ -6,7 +6,9 @@ use App\Contract\Product\ProductContract;
 use App\Models\BundleItem;
 use App\Models\Producer;
 use App\Models\Product;
+use App\Models\StockMovement;
 use App\Service\BaseService;
+use App\Service\Stock\StockLedger;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -17,7 +19,7 @@ class ProductService extends BaseService implements ProductContract
 
     protected array $relation = ['bundleItems.product'];
 
-    public function __construct(Product $model)
+    public function __construct(Product $model, private readonly StockLedger $ledger)
     {
         parent::__construct($model);
     }
@@ -26,6 +28,7 @@ class ProductService extends BaseService implements ProductContract
     {
         $this->applyProducer($payloads);
         $bundleItems = $this->extractBundleItems($payloads);
+        unset($payloads['stock_seen']);
 
         try {
             return DB::transaction(function () use ($payloads, $bundleItems) {
@@ -39,6 +42,7 @@ class ProductService extends BaseService implements ProductContract
                 }
 
                 $this->syncBundleItems($product, $bundleItems);
+                $this->ledger->recordOpening($product, auth('web')->id());
 
                 return $product->fresh($this->relation);
             });
@@ -52,8 +56,14 @@ class ProductService extends BaseService implements ProductContract
         $this->applyProducer($payloads);
         $bundleItems = $this->extractBundleItems($payloads);
 
+        // Stock never goes through the plain column update: it is changed
+        // below, relative to the live value, so concurrent sales survive.
+        $typedStock = array_key_exists('stock', $payloads) ? (int) $payloads['stock'] : null;
+        $seenStock = array_key_exists('stock_seen', $payloads) ? (int) $payloads['stock_seen'] : null;
+        unset($payloads['stock'], $payloads['stock_seen']);
+
         try {
-            return DB::transaction(function () use ($id, $payloads, $bundleItems) {
+            return DB::transaction(function () use ($id, $payloads, $bundleItems, $typedStock, $seenStock) {
                 $product = parent::update($id, $payloads);
 
                 if ($product instanceof Exception) {
@@ -61,6 +71,14 @@ class ProductService extends BaseService implements ProductContract
                 }
 
                 $this->syncBundleItems($product, $bundleItems);
+
+                if ($bundleItems !== null) {
+                    // A bundle holds no stock of its own; whatever it had leaves.
+                    $locked = Product::query()->whereKey($product->id)->lockForUpdate()->firstOrFail();
+                    $this->ledger->move($locked, -(int) $locked->stock, StockMovement::REASON_ADJUSTMENT, null, auth('web')->id(), 'Dijadikan paket');
+                } elseif ($typedStock !== null && $seenStock !== null && $typedStock !== $seenStock) {
+                    $this->ledger->adjust($product->id, $typedStock - $seenStock, auth('web')->id());
+                }
 
                 return $product->fresh($this->relation);
             });

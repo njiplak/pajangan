@@ -78,6 +78,12 @@ class SettingSeeder extends Seeder
                 'key' => 'order_unpaid_hold_hours',
                 'value' => '24',
             ],
+            [
+                // Same, for orders staff enter by hand (chat, phone). Longer
+                // because manual transfers are confirmed by hand. 0 = never.
+                'key' => 'manual_order_unpaid_hold_hours',
+                'value' => '72',
+            ],
         ];
 
         foreach ($settings as $setting) {

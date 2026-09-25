@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Setting;
 use App\Contract\Setting\SettingContract;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SettingRequest;
+use App\Utils\ListFilter;
 use App\Utils\WebResponse;
 use Illuminate\Support\Facades\Request;
 use Inertia\Inertia;
@@ -26,7 +27,7 @@ class SettingController extends Controller
     public function fetch()
     {
         $data = $this->service->all(
-            allowedFilters: [],
+            allowedFilters: [ListFilter::search(['key', 'value'])],
             allowedSorts: [],
             withPaginate: true,
             perPage: request()->get('per_page', 10)

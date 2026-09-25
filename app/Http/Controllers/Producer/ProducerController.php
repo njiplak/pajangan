@@ -6,6 +6,7 @@ use App\Contract\Producer\ProducerContract;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ProducerRequest;
 use App\Models\Producer;
+use App\Utils\ListFilter;
 use App\Utils\WebResponse;
 use Exception;
 use Illuminate\Http\Request;
@@ -23,7 +24,7 @@ class ProducerController extends Controller
     public function fetch()
     {
         $data = $this->service->all(
-            allowedFilters: [],
+            allowedFilters: [ListFilter::search(['name', 'region'])],
             allowedSorts: [],
             withPaginate: true,
             perPage: request()->get('per_page', 10)

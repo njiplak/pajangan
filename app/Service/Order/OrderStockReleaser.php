@@ -4,6 +4,8 @@ namespace App\Service\Order;
 
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\StockMovement;
+use App\Service\Stock\StockLedger;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -18,6 +20,8 @@ use Illuminate\Support\Facades\DB;
  */
 class OrderStockReleaser
 {
+    public function __construct(private readonly StockLedger $ledger) {}
+
     /**
      * @return bool true when this call is the one that released the stock
      */
@@ -41,7 +45,9 @@ class OrderStockReleaser
 
                 // A product deleted since the order was placed has nowhere
                 // to return to; the rest of the order still releases.
-                $product?->increment('stock', $units);
+                if ($product) {
+                    $this->ledger->move($product, $units, StockMovement::REASON_RELEASE, $locked);
+                }
             }
 
             $locked->stock_released_at = now();

@@ -199,6 +199,8 @@ test('creating a shipment calls Biteship with the order customer as destination 
     $user = orderShippingAdmin(['order.update']);
     fakeBiteshipSenderConfig();
     $order = shippingTestOrder();
+    // A courier is only booked for a paid order.
+    $order->update(['status' => Order::STATUS_PAID]);
 
     Http::fake([
         'api.biteship.com/v1/orders' => Http::response([
@@ -247,6 +249,8 @@ test('creating a shipment is refused when one already exists for the order', fun
     $user = orderShippingAdmin(['order.update']);
     fakeBiteshipSenderConfig();
     $order = shippingTestOrder();
+    // A courier is only booked for a paid order.
+    $order->update(['status' => Order::STATUS_PAID]);
     $order->update(['biteship_order_id' => 'bts-existing']);
 
     Http::fake();
@@ -269,6 +273,8 @@ test('creating a shipment surfaces the Biteship error instead of persisting anyt
     $user = orderShippingAdmin(['order.update']);
     fakeBiteshipSenderConfig();
     $order = shippingTestOrder();
+    // A courier is only booked for a paid order.
+    $order->update(['status' => Order::STATUS_PAID]);
 
     Http::fake([
         'api.biteship.com/v1/orders' => Http::response(['success' => false, 'error' => 'invalid courier'], 400),
